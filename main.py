@@ -5,8 +5,10 @@
 
 
 def print_hi(name):
+    a = {1:1,
+         2:2}
     # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+    print(f'Hi, {name}',a)  # Press ⌘F8 to toggle the breakpoint.
 
 
 # Press the green button in the gutter to run the script.

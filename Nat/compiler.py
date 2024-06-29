@@ -1,6 +1,4 @@
-import regex
-from parser import *
-from collections import OrderedDict
+from Parser.parser import *
 
 
 def strip_surrounding_parentheses(s):
@@ -22,83 +20,6 @@ class Compiler:
         env = self.program.split('|-')[0].strip()
         expr = self.program.split('|-')[1].strip()
         return env, expr
-
-    def parse_fun_expression(self, fun_expr):
-
-        env_pattern = r'\((?:[^\(\)]|(?R))*\)'
-        fun_patter = r'\[(?:[^\[\]]|(?R))*\]'
-
-        env_match = regex.search(env_pattern, fun_expr)
-        env = env_match.group(0)
-        if len(env) >= 2:
-            env = env[1:-1]
-
-        fun_match = regex.search(fun_patter, fun_expr[env_match.end(0)::])
-        fun = fun_match.group(0)
-        if len(fun) >= 2:
-            fun = fun[1:-1]
-
-        ident, expr = self.parse_fun(fun)
-
-        return env, ident, expr
-
-    @staticmethod
-    def parse_fun(fun):
-        pattern = r'fun\s+(\w+)\s+->\s+(.*)'
-        match = regex.match(pattern, fun)
-        if match:
-            ident = match.group(1)
-            expr = match.group(2)
-            return ident, expr
-        return None, None
-
-    def parse_rec_fun_expression(self, rec_fun_expr):
-
-        env_pattern = r'\((?:[^\(\)]|(?R))*\)'
-        fun_patter = r'\[(?:[^\[\]]|(?R))*\]'
-
-        env_match = regex.search(env_pattern, rec_fun_expr)
-        env = env_match.group(0)
-        if len(env) >= 2:
-            env = env[1:-1]
-
-        fun_match = regex.search(fun_patter, rec_fun_expr[env_match.end(0)::])
-        fun = fun_match.group(0)
-        if len(fun) >= 2:
-            fun = fun[1:-1]
-
-        ident_1, ident_2, expr = self.parse_rec_func(fun)
-
-        return env, ident_1, ident_2, expr
-
-    @staticmethod
-    def parse_rec_func(s):
-        pattern = r'rec\s+(\w+)\s+=\s+fun\s+(\w+)\s+->\s+(.*)'
-        match = regex.match(pattern, s)
-        if match:
-            ident_1 = match.group(1)
-            ident_2 = match.group(2)
-            expression = match.group(3)
-
-            return ident_1, ident_2, expression
-        return None, None, None
-
-    @staticmethod
-    def decompose_fun(fun):
-        pass
-
-    @staticmethod
-    def parse_environment(environment):
-        environments = [s.strip() for s in environment.split(',')]
-        od = OrderedDict()
-
-        for env in environments:
-            if env != '':
-                ident = env.split('=', 1)[0].strip()
-                expr = env.split('=', 1)[1].strip()
-                od[ident] = expr
-
-        return od
 
     @staticmethod
     def eval_int(environment, expr):

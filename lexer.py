@@ -67,22 +67,27 @@ class Lexer:
             token_txt = self.source[start_pos: self.cur_pos + 1]  # Get the substring.
             token = Token(token_txt, TokenType.NUMBER)
         elif self.cur_char.isalpha():
-            # Leading character is a letter, so this must be an identifier or a keyword.
-            # Get all consecutive alphanumeric characters.
-            start_pos = self.cur_pos
-            while self.peek().isalnum():
-                self.next_char()
+            if self.cur_char == 'Z':
+                token = Token(self.cur_char, TokenType.NAT_Z)
+            elif self.cur_char == 'S':
+                token = Token(self.cur_char, TokenType.NAT_S)
+            else:
+                # Leading character is a letter, so this must be an identifier or a keyword.
+                # Get all consecutive alphanumeric characters.
+                start_pos = self.cur_pos
+                while self.peek().isalnum():
+                    self.next_char()
 
-            # Check if the token is in the list of keywords.
-            token_txt = self.source[start_pos: self.cur_pos + 1]  # Get the substring.
-            keyword = Token.check_if_keyword(token_txt)
+                # Check if the token is in the list of keywords.
+                token_txt = self.source[start_pos: self.cur_pos + 1]  # Get the substring.
+                keyword = Token.check_if_keyword(token_txt)
 
-            if token_txt == 'true' or token_txt == 'false':
-                token = Token(token_txt, TokenType.BOOL)  # Bool
-            elif keyword is None:  # Identifier
-                token = Token(token_txt, TokenType.IDENT)
-            else:  # Keyword
-                token = Token(token_txt, keyword)
+                if token_txt == 'true' or token_txt == 'false':
+                    token = Token(token_txt, TokenType.BOOL)  # Bool
+                elif keyword is None:  # Identifier
+                    token = Token(token_txt, TokenType.IDENT)
+                else:  # Keyword
+                    token = Token(token_txt, keyword)
         elif self.cur_char == '\0':
             # EOF.
             token = Token('', TokenType.EOF)
@@ -139,3 +144,6 @@ class TokenType(enum.Enum):
     # Parenthesis
     OPEN_PAREN = 301
     CLOSE_PAREN = 302
+    # Nat
+    NAT_S = 401
+    NAT_Z = 402
