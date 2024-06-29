@@ -32,11 +32,18 @@ class Bool(SyntaxNode):
     def __init__(self, text):
         self.value = text
 
+
 class IfThenElse(SyntaxNode):
     def __init__(self, if_expr, then_expr, else_expr):
         self.ifExpr = if_expr
         self.thenExpr = then_expr
         self.elseExpr = else_expr
+
+
+class VarApp(SyntaxNode):
+    def __init__(self, var, expr):
+        self.var = var
+        self.expr = expr
 
 
 class Fun(SyntaxNode):
@@ -46,14 +53,14 @@ class Fun(SyntaxNode):
 
 
 class Let(SyntaxNode):
-    def __init__(self, var, fun, expr):
+    def __init__(self, var, fun, in_expr):
         self.var = var
         self.fun = fun
-        self.expr = expr
+        self.in_expr = in_expr
 
 
 class RecFun(SyntaxNode):
-    def __init__(self, var, fun, expr):
+    def __init__(self, var, fun, in_expr):
         self.var = var
         self.fun = fun
-        self.expr = expr
+        self.in_expr = in_expr
