@@ -5,7 +5,7 @@
 from lexer import *
 from Parser.parser import *
 #from Parser.syntax_tree import *
-
+from graphviz import Digraph
 
 def print_hi(name):
     lex = Lexer("let fact = fun self -> fun n -> if n < 2 then 1 else n * self self (n - 1) in fact fact 3")
@@ -17,8 +17,10 @@ def print_hi(name):
         tokens.append(token)
 
     parser = Parser()
-    tree = parser.parse(tokens)
-    print(tree)
+    root = parser.parse(tokens)
+    tree = SyntaxTree(root)
+    dot = tree.visualize_tree()
+    dot.render('tree', format='png', view=True)
 
 
 # Press the green button in the gutter to run the script.
