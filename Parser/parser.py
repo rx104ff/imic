@@ -1,5 +1,6 @@
 from lexer import *
 from .syntax_tree import *
+from .env_list import *
 
 open_closures = {TokenType.OPEN_PAREN: TokenType.CLOSE_PAREN,
                  TokenType.LET: TokenType.IN,
@@ -16,8 +17,22 @@ bop = [TokenType.LT, TokenType.MINUS, TokenType.PLUS, TokenType.ASTERISK, TokenT
 
 # Parser object keeps track of current token, checks if the code matches the grammar, and emits code along the way.
 class Parser:
+    def parse_env(self, tokens: [Token]) -> Env:
+        var = tokens[0]
+        val = tokens[2::]
+        kinds = [token.kind for token in tokens]
+        if TokenType.REC in kinds:
+            return Env(TokenType.REC, var, val)
+        elif TokenType.FUN in kinds:
+            return Env(TokenType.FUN, var, val)
+        elif tokens[2].kind == TokenType.BOOL:
+            return Env(TokenType.BOOL, var, val)
+        elif tokens[2].kind == TokenType.NUMBER:
+            return Env(TokenType.NUMBER, var, val)
+        else:
+            self.abort("Invalid environment")
 
-    def parse(self, tokens):
+    def parse_program(self, tokens) -> SyntaxNode:
         stack = []
         if len(tokens) == 1:
             token = tokens[0]
@@ -36,8 +51,8 @@ class Parser:
                 stack.pop()
             elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS or token.kind == TokenType.LT:
                 if not stack:
-                    left = self.parse(tokens[0:index])
-                    right = self.parse(tokens[index+1::])
+                    left = self.parse_program(tokens[0:index])
+                    right = self.parse_program(tokens[index + 1::])
                     return BinOp(left, token.kind, right)
             elif token.kind == TokenType.ASTERISK:
                 if not stack:
@@ -45,16 +60,16 @@ class Parser:
                     if checker == -1:
                         self.abort("Unmatched closures")
                     elif checker == 1:
-                        left = self.parse(tokens[0:index])
-                        right = self.parse(tokens[index+1::])
+                        left = self.parse_program(tokens[0:index])
+                        right = self.parse_program(tokens[index + 1::])
                         return BinOp(left, token.kind, right)
             elif token.kind == TokenType.IF:
                 if not stack:
                     index_then = self.matcher(tokens[index+1::], open_closures[TokenType.IF], index+1)
                     index_else = self.matcher(tokens[index_then+1::], open_closures[TokenType.THEN], index_then+1)
-                    if_expr = self.parse(tokens[index+1:index_then])
-                    then_expr = self.parse(tokens[index_then+1:index_else])
-                    else_expr = self.parse(tokens[index_else+1::])
+                    if_expr = self.parse_program(tokens[index + 1:index_then])
+                    then_expr = self.parse_program(tokens[index_then + 1:index_else])
+                    else_expr = self.parse_program(tokens[index_else + 1::])
                     return IfThenElse(if_expr, then_expr, else_expr)
             elif token.kind == TokenType.LET:
                 if not stack:
@@ -64,9 +79,9 @@ class Parser:
                         index_in = self.matcher(tokens[index + 2::], open_closures[token.kind], index + 2)
                         if index_in == -1:
                             self.abort("Unmatched syntax Rec")
-                        var = self.parse([tokens[index + 2]])
-                        fun = self.parse(tokens[index + 4:index_in])
-                        expr = self.parse(tokens[index_in + 1::])
+                        var = self.parse_program([tokens[index + 2]])
+                        fun = self.parse_program(tokens[index + 4:index_in])
+                        expr = self.parse_program(tokens[index_in + 1::])
                         return RecFun(var, fun, expr)
                     else:
                         # let var = fun in  expr
@@ -74,24 +89,24 @@ class Parser:
                         index_in = self.matcher(tokens[index+1::], open_closures[token.kind], index+1)
                         if index_in == -1:
                             self.abort("Unmatched syntax Let")
-                        var = self.parse([tokens[index+1]])
-                        fun = self.parse(tokens[index+3:index_in])
-                        expr = self.parse(tokens[index_in+1::])
+                        var = self.parse_program([tokens[index + 1]])
+                        fun = self.parse_program(tokens[index + 3:index_in])
+                        expr = self.parse_program(tokens[index_in + 1::])
                         return Let(var, fun, expr)
             elif token.kind == TokenType.FUN:
                 if not stack:
-                    var = self.parse([tokens[index+1]])
-                    expr = self.parse(tokens[index+3::])
+                    var = self.parse_program([tokens[index + 1]])
+                    expr = self.parse_program(tokens[index + 3::])
                     return Fun(var, expr)
             elif token.kind == TokenType.IDENT:
                 if not stack:
                     if tokens[index+1].kind not in bop:
                         if self.is_root(tokens[index + 1::]) == 1:
-                            var = self.parse([token])
-                            expr = self.parse(tokens[index+1::])
+                            var = self.parse_program([token])
+                            expr = self.parse_program(tokens[index + 1::])
                             return VarApp(var, expr)
 
-        return self.parse(tokens[1:-1])
+        return self.parse_program(tokens[1:-1])
 
     @staticmethod
     def matcher(tokens, close_type, start_index):
