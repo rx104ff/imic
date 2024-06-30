@@ -1,6 +1,7 @@
 from lexer import *
 from .syntax_tree import *
 from .env_list import *
+from typing import Optional
 
 open_closures = {TokenType.OPEN_PAREN: TokenType.CLOSE_PAREN,
                  TokenType.LET: TokenType.IN,
@@ -17,7 +18,9 @@ bop = [TokenType.LT, TokenType.MINUS, TokenType.PLUS, TokenType.ASTERISK, TokenT
 
 # Parser object keeps track of current token, checks if the code matches the grammar, and emits code along the way.
 class Parser:
-    def parse_env(self, tokens: [Token]) -> Env:
+    def parse_env(self, tokens: [Token]) -> Optional[Env]:
+        if not tokens:
+            return None
         var = tokens[0]
         val = tokens[2::]
         kinds = [token.kind for token in tokens]

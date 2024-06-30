@@ -1,19 +1,21 @@
 from Parser.parser import *
 
 
-def program(prg_input):
+def program(prog_input):
     # Pre-processing
-    prg_input.split('|-')
-    env_expr = prg_input[0]
-    prg = prg_input[0].split('evalto')[0]
-    val = prg_input[0].split('evalto')[1]
+    program_expr = prog_input.split("|-")
+    env_expr = program_expr[0]
+    prg = program_expr[1].split('evalto')[0]
+    val = program_expr[1].split('evalto')[1]
 
     envs = env_expr.split(",")
     parser = Parser()
     env_list = EnvList()
     for env in envs:
         env_lex = Lexer(env)
-        env_list.append(parser.parse_env(env_lex.get_tokens()))
+        parsed_env = parser.parse_env(env_lex.get_tokens())
+        if parsed_env is not None:
+            env_list.append(parsed_env)
 
     program_lex = Lexer(prg)
     program_tokens = program_lex.get_tokens()
@@ -27,4 +29,4 @@ def program(prg_input):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    program('PyCharm')
+    program('|- let fact = fun self -> fun n -> if n < 2 then 1 else n * self self (n - 1) in fact fact 3 evalto 6')

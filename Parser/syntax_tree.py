@@ -1,5 +1,7 @@
 from graphviz import Digraph
 
+from Parser.env_list import Env, EnvList
+
 
 class SyntaxTree:
     def __init__(self, root):
@@ -75,7 +77,31 @@ class SyntaxTree:
 
 
 class SyntaxNode:
-    pass
+    def compile(self, compiler, env: EnvList):
+        if self is None:
+            pass
+
+        if isinstance(self, BinOp):
+            left_val, left_expr = self.left.compile(compiler, [])
+            right_val, right_expr = self.right.compile(compiler, [])
+            return compiler.eval_minus()
+        elif isinstance(self, IfThenElse):
+            pass
+        elif isinstance(self, Let):
+            pass
+        elif isinstance(self, RecFun):
+            pass
+        elif isinstance(self, VarApp):
+            pass
+        elif isinstance(self, Fun):
+            pass
+        elif isinstance(self, Num):
+            pass
+        elif isinstance(self, Var):
+            pass
+        elif isinstance(self, Bool):
+            pass
+        return None
 
 
 class NatZ(SyntaxNode):
