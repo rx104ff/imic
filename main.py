@@ -8,16 +8,18 @@ from Parser.parser import *
 from graphviz import Digraph
 
 def print_hi(name):
-    lex = Lexer("let fact = fun self -> fun n -> if n < 2 then 1 else n * self self (n - 1) in fact fact 3")
-    tokens = []
+    environment_lex = Lexer("x = 2")
+    program_lex = Lexer("let fact = fun self -> fun n -> if n < 2 then 1 else n * self self (n - 1) in fact fact 3")
+    environment_tokens = []
+    program_tokens = []
     while True:
-        token = lex.get_token()
+        token = program_lex.get_token()
         if token.kind == TokenType.EOF:
             break
-        tokens.append(token)
+        program_tokens.append(token)
 
     parser = Parser()
-    root = parser.parse(tokens)
+    root = parser.parse(program_tokens)
     tree = SyntaxTree(root)
     dot = tree.visualize_tree()
     dot.render('tree', format='png', view=True)
