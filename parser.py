@@ -32,8 +32,12 @@ class Parser:
             remaining_string = s
 
         # Regex to match the "rec x = fun y -> e0" or "fun x -> e0" part
-        rec_fun_pattern = re.compile(r'\[rec\s+(\w+)\s*=\s*fun\s+(\w+)\s*->\s*(.*?)\]')
-        fun_pattern = re.compile(r'\[fun\s+(\w+)\s*->\s*(.*?)\]')
+        rec_fun_pattern = re.compile(r'rec\s+(\S+)\s*=\s*fun\s+(\S+)\s*->\s*(.*)')
+        fun_pattern = re.compile(r'fun\s+(\S+)\s*->\s*(.*)')
+
+        remaining_string = remaining_string.strip()
+        if remaining_string.startswith('[') and remaining_string.endswith(']'):
+            remaining_string = remaining_string[1:-1]
 
         # Check for the "rec x = fun y -> e0" pattern
         rec_fun_match = rec_fun_pattern.search(remaining_string)
@@ -52,7 +56,7 @@ class Parser:
 
         return envs, None, None, None
 
-    def parse_func(self, func_expr) -> (EnvList, Optional[Var], Var, SyntaxNode):
+    def parse_func(self, func_expr) -> (EnvList, Var, Var, SyntaxNode):
         envs_str, rec_var_str, fun_var_str, expr_str = self.match_parts(func_expr)
         envs = self.parse_env(envs_str)
         var = self.parse_program(fun_var_str)
@@ -69,12 +73,17 @@ class Parser:
         env_start = 0
         env_list = EnvList()
 
+        if not env_expr:
+            return env_list
+
         for i, s in enumerate(env_expr):
             if s == '(':
                 stack += 1
             elif s == ')':
                 if stack == 0:
-                    self.abort("Invalid parenthesis")
+                    self.abort("Env: Invalid parenthesis")
+                else:
+                    stack -= 1
             elif s == ',':
                 env = env_expr[env_start:i]
                 env_start = i+1
@@ -83,6 +92,10 @@ class Parser:
                 if parsed_env is not None:
                     env_list.append(parsed_env)
 
+        env = env_expr[env_start::]
+        env_lex = Lexer(env)
+        parsed_env = self.parse_env_token(env_lex.get_tokens())
+        env_list.append(parsed_env)
         return env_list
 
     def parse_program(self, program: str) -> SyntaxNode:

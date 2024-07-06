@@ -29,6 +29,8 @@ class TokenType(enum.Enum):
     # Parenthesis
     OPEN_PAREN = 301
     CLOSE_PAREN = 302
+    OPEN_BRACKET = 303
+    CLOSE_BRACKET = 304
     # Nat
     NAT_S = 401
     NAT_Z = 402
@@ -39,6 +41,9 @@ class Token:
     def __init__(self, token_txt, token_type):
         self.text = token_txt  # The token's actual text. Used for identifiers, strings, and numbers.
         self.kind = token_type  # The TokenType that this token is classified as.
+
+    def __str__(self):
+        return self.text
 
     @staticmethod
     def check_if_keyword(token_txt: str) -> Optional[TokenType]:
@@ -60,7 +65,7 @@ class Lexer:
     # Process the next character.
     def next_char(self):
         self.cur_pos += 1
-        if self.cur_pos >= len(self.source):
+        if self.source is None or self.cur_pos >= len(self.source):
             self.cur_char = '\0'  # EOF
         else:
             self.cur_char = self.source[self.cur_pos]
@@ -106,6 +111,12 @@ class Lexer:
         elif self.cur_char == ')':
             # Check whether this is token is )
             token = Token(self.cur_char, TokenType.CLOSE_PAREN)
+        elif self.cur_char == '[':
+            # Check whether this is token is (
+            token = Token(self.cur_char, TokenType.OPEN_BRACKET)
+        elif self.cur_char == ']':
+            # Check whether this is token is )
+            token = Token(self.cur_char, TokenType.CLOSE_BRACKET)
         elif self.cur_char.isdigit():
             # Leading character is a digit, so this must be a number.
             # Get all consecutive digits.
@@ -143,6 +154,7 @@ class Lexer:
         else:
             # Unknown token!
             self.abort("Unknown token: " + self.cur_char)
+            #pass
 
         self.next_char()
         return token

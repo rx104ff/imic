@@ -148,8 +148,8 @@ class Compiler:
 
     @staticmethod
     def eval_fun(environment, ident, expr):
-        value = f'({environment})[fun {ident} -> {expr}]'
-        evalto = f'{environment} |- fun {ident} -> {expr} evalto {value} by E-Fun{{}};\n'
+        value = f'({environment})[{expr}]'
+        evalto = f'{environment} |- {expr} evalto {value} by E-Fun{{}};\n'
         return value, evalto
 
     @staticmethod

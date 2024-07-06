@@ -21,9 +21,11 @@ class EnvList:
 
     def __add__(self, other):
         if isinstance(other, EnvList):
-            self.envs = self.envs + other.envs
-            return self
-        return NotImplemented
+            if self.envs is not None and len(self.envs) > 0 and self.envs[0] is not None:
+                self.envs = self.envs + other.envs
+                return self
+            else:
+                return other
 
     def pop(self):
         self.envs.pop()
