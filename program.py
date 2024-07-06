@@ -51,7 +51,9 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
         parser = Parser()
         sub_envs, sub_rec, sub_var, sub_expr = parser.parse_func(val_1)
         if sub_rec:
-            pass
+            new_env = parser.parse_env(f'{sub_rec.name} = {val_1}, {sub_var} = {val_2}')
+            val, expr = s_compile(sub_expr, compiler, sub_envs + new_env)
+            return compiler.eval_app_rec(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val)
         else:
             assert(isinstance(sub_var, Var))
             new_env = parser.parse_env(f'{sub_var.name} = {val_2}')

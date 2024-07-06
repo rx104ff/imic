@@ -62,7 +62,7 @@ class Parser:
             rec = self.parse_program(rec_var_str)
             return envs, rec, var, expr
         else:
-            return envs, var, expr
+            return envs, None, var, expr
 
     def parse_env(self, env_expr: str) -> EnvList:
         stack = 0
