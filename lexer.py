@@ -10,6 +10,7 @@ class TokenType(enum.Enum):
     IDENT = 2
     STRING = 3
     BOOL = 4
+    COMMA = 5
     # Keywords.
     FUN = 101
     LET = 102
@@ -89,6 +90,8 @@ class Lexer:
                 token = Token(last_char + self.cur_char, TokenType.ARROW)
             else:
                 token = Token(self.cur_char, TokenType.MINUS)
+        elif self.cur_char == ',':
+            token = Token(self.cur_char, TokenType.COMMA)
         elif self.cur_char == '*':
             token = Token(self.cur_char, TokenType.ASTERISK)
         elif self.cur_char == '=':

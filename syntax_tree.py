@@ -1,6 +1,9 @@
 from graphviz import Digraph
 
-from Parser.env_list import Env, EnvList
+from parser import Parser
+from compiler import Compiler
+from env_list import *
+from lexer import *
 
 
 class SyntaxTree:
@@ -77,31 +80,8 @@ class SyntaxTree:
 
 
 class SyntaxNode:
-    def compile(self, compiler, env: EnvList):
-        if self is None:
-            pass
-
-        if isinstance(self, BinOp):
-            left_val, left_expr = self.left.compile(compiler, [])
-            right_val, right_expr = self.right.compile(compiler, [])
-            return compiler.eval_minus()
-        elif isinstance(self, IfThenElse):
-            pass
-        elif isinstance(self, Let):
-            pass
-        elif isinstance(self, RecFun):
-            pass
-        elif isinstance(self, VarApp):
-            pass
-        elif isinstance(self, Fun):
-            pass
-        elif isinstance(self, Num):
-            pass
-        elif isinstance(self, Var):
-            pass
-        elif isinstance(self, Bool):
-            pass
-        return None
+    def __init__(self, is_paren: bool):
+        self.is_paren = is_paren
 
 
 class NatZ(SyntaxNode):
@@ -109,55 +89,136 @@ class NatZ(SyntaxNode):
 
 
 class BinOp(SyntaxNode):
-    def __init__(self, left, op, right):
+    def __init__(self, left, op, right, is_paren: bool):
+        super().__init__(is_paren)
         self.left = left
         self.op = op
         self.right = right
 
+    def __str__(self):
+        if self.is_paren:
+            if self.op == TokenType.MINUS:
+                return f'({str(self.left)} - {str(self.right)})'
+            elif self.op == TokenType.PLUS:
+                return f'({str(self.left)} + {str(self.right)})'
+            elif self.op == TokenType.ASTERISK:
+                return f'({str(self.left)} * {str(self.right)})'
+            elif self.op == TokenType.LT:
+                return f'({str(self.left)} < {str(self.right)})'
+            elif self.op == TokenType.EQ:
+                return f'({str(self.left)} = {str(self.right)})'
+        else:
+            if self.op == TokenType.MINUS:
+                return f'{str(self.left)} - {str(self.right)}'
+            elif self.op == TokenType.PLUS:
+                return f'{str(self.left)} + {str(self.right)}'
+            elif self.op == TokenType.ASTERISK:
+                return f'{str(self.left)} * {str(self.right)}'
+            elif self.op == TokenType.LT:
+                return f'{str(self.left)} < {str(self.right)}'
+            elif self.op == TokenType.EQ:
+                return f'{str(self.left)} = {str(self.right)}'
+
 
 class Num(SyntaxNode):
-    def __init__(self, value):
+    def __init__(self, value, is_paren: bool):
+        super().__init__(is_paren)
         self.value = value
+
+    def __str__(self):
+        if self.is_paren:
+            return f'({self.value})'
+        else:
+            return f'{self.value}'
 
 
 class Var(SyntaxNode):
-    def __init__(self, name):
+    def __init__(self, name: str, is_paren):
+        super().__init__(is_paren)
         self.name = name
+
+    def __str__(self):
+        if self.is_paren:
+            return f'({self.name})'
+        else:
+            return f'{self.name}'
 
 
 class Bool(SyntaxNode):
-    def __init__(self, text):
-        self.value = text
+    def __init__(self, value: str, is_paren):
+        super().__init__(is_paren)
+        self.value = value
+
+    def __str__(self):
+        if self.is_paren:
+            return f'({self.value})'
+        else:
+            return f'{self.value}'
 
 
 class IfThenElse(SyntaxNode):
-    def __init__(self, if_expr, then_expr, else_expr):
+    def __init__(self, if_expr: SyntaxNode, then_expr: SyntaxNode, else_expr: SyntaxNode, is_paren: bool):
+        super().__init__(is_paren)
         self.ifExpr = if_expr
         self.thenExpr = then_expr
         self.elseExpr = else_expr
 
-
-class VarApp(SyntaxNode):
-    def __init__(self, var, expr):
-        self.var = var
-        self.expr = expr
+    def __str__(self):
+        if self.is_paren:
+            return f'(if {str(self.ifExpr)} then {str(self.thenExpr)} else {str(self.elseExpr)})'
+        else:
+            return f'if {str(self.ifExpr)} then {str(self.thenExpr)} else {str(self.elseExpr)}'
 
 
 class Fun(SyntaxNode):
-    def __init__(self, var, expr):
+    def __init__(self, var, expr, is_paren: bool):
+        super().__init__(is_paren)
         self.var = var
         self.expr = expr
 
+    def __str__(self):
+        if self.is_paren:
+            return f'(fun {str(self.var)} -> {str(self.expr)})'
+        else:
+            return f'fun {str(self.var)} -> {str(self.expr)}'
+
+
+class VarApp(SyntaxNode):
+    def __init__(self, var: Var, expr: SyntaxNode, is_paren: bool):
+        super().__init__(is_paren)
+        self.var = var
+        self.expr = expr
+
+    def __str__(self):
+        if self.is_paren:
+            return f'({str(self.var)} {str(self.expr)})'
+        else:
+            return f'{str(self.var)} {str(self.expr)}'
+
 
 class Let(SyntaxNode):
-    def __init__(self, var, fun, in_expr):
+    def __init__(self, var: Var, fun: SyntaxNode, in_expr: SyntaxNode, is_paren: bool):
+        super().__init__(is_paren)
         self.var = var
         self.fun = fun
         self.in_expr = in_expr
+
+    def __str__(self):
+        if self.is_paren:
+            return f'(let {str(self.var)} = {str(self.fun)} in {str(self.in_expr)})'
+        else:
+            return f'let {str(self.var)} = {str(self.fun)} in {str(self.in_expr)}'
 
 
 class RecFun(SyntaxNode):
-    def __init__(self, var, fun, in_expr):
+    def __init__(self, var, fun, in_expr, is_paren: bool):
+        super().__init__(is_paren)
         self.var = var
         self.fun = fun
         self.in_expr = in_expr
+
+    def __str__(self):
+        if self.is_paren:
+            return f'(let rec {str(self.var)} = {str(self.fun)} in {str(self.in_expr)})'
+        else:
+            return f'let rec {str(self.var)} = {str(self.fun)} in {str(self.in_expr)}'

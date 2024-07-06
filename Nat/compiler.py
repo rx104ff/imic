@@ -1,4 +1,4 @@
-from Parser.parser import *
+from parser import *
 
 
 def strip_surrounding_parentheses(s):

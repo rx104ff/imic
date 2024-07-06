@@ -57,7 +57,7 @@ class Compiler:
 
     @staticmethod
     def eval_var2(environment: str, expr: str, sub_expr: str, val: str) -> (any, str):
-        evalto = (f'{environment} |- {expr} evalto {val} by E-Var1{{\n'
+        evalto = (f'{environment} |- {expr} evalto {val} by E-Var2{{\n'
                   f'    {sub_expr} \n'
                   f'}};\n')
         return val, evalto
@@ -129,7 +129,11 @@ class Compiler:
     def eval_if(environment: str,
                 expr_1: str, expr_2: str, expr_3: str,
                 sub_expr_1: str, sub_expr_2: str, sub_expr_3: str,
-                bool_val: str, val: str) -> (any, str):
+                bool_val: str, then_val: str, else_val: str) -> (any, str):
+        if bool(bool_val):
+            val = then_val
+        else:
+            val = else_val
         if bool(bool_val):
             evalto = (f'{environment} |- if {expr_1} then {expr_2} else {expr_3} evalto {val} by E-IfT {{\n'
                       f'    {sub_expr_1} \n'
@@ -150,10 +154,10 @@ class Compiler:
 
     @staticmethod
     def eval_app(environment,
-                 expr_1: str, expr_2: str,
+                 ident: str, expr: str,
                  sub_expr_1: str, sub_expr_2: str, sub_expr_3: str,
                  val: str) -> (any, str):
-        evalto = (f'{environment} |- {expr_1} {expr_2} evalto {val} by E-App {{\n'
+        evalto = (f'{environment} |- {ident} {expr} evalto {val} by E-App {{\n'
                   f'    {sub_expr_1} \n'
                   f'    {sub_expr_2} \n'
                   f'    {sub_expr_3} \n'
@@ -178,8 +182,8 @@ class Compiler:
                      sub_expr_1: str, sub_expr_2: str, sub_expr_3: str,
                      val: str) -> (any, str):
         evalto = (f'{environment} |- {expr_1} {expr_2} evalto {val} by E-AppRec {{\n'
-                  f'    {sub_expr_1}'
-                  f'    {sub_expr_2}'
-                  f'    {sub_expr_3}'
+                  f'    {sub_expr_1} \n'
+                  f'    {sub_expr_2} \n'
+                  f'    {sub_expr_3} \n'
                   f'}};\n')
         return val, evalto

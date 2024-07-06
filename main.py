@@ -1,30 +1,22 @@
-from Parser.parser import *
-
+#from parser import *
 
 def program(prog_input):
+    pass
     # Pre-processing
-    program_expr = prog_input.split("|-")
-    env_expr = program_expr[0]
-    prg = program_expr[1].split('evalto')[0]
-    val = program_expr[1].split('evalto')[1]
+    #program_expr = prog_input.split("|-")
+    #env_expr = program_expr[0]
+    #prg = program_expr[1].split('evalto')[0]
+    #val = program_expr[1].split('evalto')[1]
 
-    envs = env_expr.split(",")
-    parser = Parser()
-    env_list = EnvList()
-    for env in envs:
-        env_lex = Lexer(env)
-        parsed_env = parser.parse_env(env_lex.get_tokens())
-        if parsed_env is not None:
-            env_list.append(parsed_env)
+    #parser = Parser()
 
-    program_lex = Lexer(prg)
-    program_tokens = program_lex.get_tokens()
+    #env_list = parser.parse_env(env_expr)
 
-    program_root = parser.parse_program(program_tokens)
-    program_tree = SyntaxTree(program_root)
+    #program_tree = parser.parse_program(prg)
 
-    dot = program_tree.visualize_tree()
-    dot.render('tree', format='png', view=True)
+    #print(env_list)
+    #dot = program_tree.visualize_tree()
+    #dot.render('tree', format='png', view=True)
 
 
 # Press the green button in the gutter to run the script.
