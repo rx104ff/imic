@@ -43,7 +43,7 @@ class Token:
         self.kind = token_type  # The TokenType that this token is classified as.
 
     def __str__(self):
-        return self.text
+        return f'{self.text}'
 
     @staticmethod
     def check_if_keyword(token_txt: str) -> Optional[TokenType]:

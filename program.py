@@ -9,7 +9,7 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
     if node is None:
         pass
 
-    #print(f'{envs} |- {node}')
+    print(f'{envs} |- {node}')
     if isinstance(node, BinOp):
         left_val, left_expr = s_compile(node.left, compiler, envs)
         right_val, right_expr = s_compile(node.right, compiler, envs)

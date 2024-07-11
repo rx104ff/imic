@@ -21,26 +21,20 @@ class Parser:
     @staticmethod
     def match_parts(s):
         # Regex to match the first balanced parentheses part
-        paren_pattern = re.compile(r'\(([^()]*(\([^()]*\))*[^()]*)\)')
+        env_pattern = re.compile(r'^\((.*)\)\s*\[(.*)\]$', re.DOTALL)
+
+        match = env_pattern.match(s)
         # Find the first balanced parentheses part
-        paren_match = paren_pattern.search(s)
-        if paren_match:
-            envs = paren_match.group(1)
-            remaining_string = s[paren_match.end():]  # Get the remaining string after the matched parentheses
-        else:
-            envs = None
-            remaining_string = s
+
+        envs = match.group(1).strip()
+        function_expr = match.group(2).strip()
 
         # Regex to match the "rec x = fun y -> e0" or "fun x -> e0" part
         rec_fun_pattern = re.compile(r'rec\s+(\S+)\s*=\s*fun\s+(\S+)\s*->\s*(.*)')
         fun_pattern = re.compile(r'fun\s+(\S+)\s*->\s*(.*)')
 
-        remaining_string = remaining_string.strip()
-        if remaining_string.startswith('[') and remaining_string.endswith(']'):
-            remaining_string = remaining_string[1:-1]
-
         # Check for the "rec x = fun y -> e0" pattern
-        rec_fun_match = rec_fun_pattern.search(remaining_string)
+        rec_fun_match = rec_fun_pattern.search(function_expr)
         if rec_fun_match:
             rec_var = rec_fun_match.group(1)
             fun_var = rec_fun_match.group(2)
@@ -48,7 +42,7 @@ class Parser:
             return envs, rec_var, fun_var, expr
         else:
             # Check for the "fun x -> e0" pattern
-            fun_match = fun_pattern.search(remaining_string)
+            fun_match = fun_pattern.search(function_expr)
             if fun_match:
                 fun_var = fun_match.group(1)
                 expr = fun_match.group(2)
@@ -210,7 +204,7 @@ class Parser:
                                     var = self.parse_program_token(token[index:sub_index])
                                     expr = self.parse_program_token(tokens[sub_index::])
                                     return VarApp(var, expr, is_paren)
-                            elif sub_token.kind == TokenType.OPEN_BRACKET:
+                            elif sub_token.kind == TokenType.OPEN_PAREN:
                                 sub_stack.append(sub_token)
                             elif sub_token.kind == TokenType.CLOSE_PAREN:
                                 if not sub_stack or sub_stack[-1].kind != TokenType.OPEN_PAREN:
@@ -221,17 +215,21 @@ class Parser:
                         if tokens[i].kind == TokenType.CLOSE_PAREN:
                             sub_stack.append(tokens[i])
                             i -= 1
-                            while i > index and sub_stack:
+                            while sub_stack:
                                 if tokens[i].kind == TokenType.CLOSE_PAREN:
                                     sub_stack.append(tokens[i])
-                                elif tokens[i].kind == TokenType.OPEN_BRACKET:
+                                elif tokens[i].kind == TokenType.OPEN_PAREN:
                                     if not sub_stack or sub_stack[-1].kind != TokenType.CLOSE_PAREN:
                                         self.abort("Unmatched parenthesis")
-                                sub_stack.pop()
+                                    sub_stack.pop()
                                 i -= 1
-                        var = self.parse_program_token(tokens[index:i])
-                        expr = self.parse_program_token(tokens[i::])
-                        return VarApp(var, expr, is_paren)
+                            var = self.parse_program_token(tokens[index:i + 1])
+                            expr = self.parse_program_token(tokens[i + 1::])
+                            return VarApp(var, expr, is_paren)
+                        else:
+                            var = self.parse_program_token(tokens[index:-1])
+                            expr = self.parse_program_token(tokens[-1::])
+                            return VarApp(var, expr, is_paren)
                     else:
                         continue
 
