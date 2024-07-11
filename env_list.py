@@ -27,6 +27,12 @@ class EnvList:
             else:
                 return other
 
+    def copy(self):
+        new_env = EnvList()
+        for env in self.envs:
+            new_env.append(env)
+        return new_env
+
     def pop(self):
         self.envs.pop()
         return self

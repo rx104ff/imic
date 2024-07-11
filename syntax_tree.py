@@ -181,7 +181,7 @@ class Fun(SyntaxNode):
 
 
 class VarApp(SyntaxNode):
-    def __init__(self, var: Var, expr: SyntaxNode, is_paren: bool):
+    def __init__(self, var: SyntaxNode, expr: SyntaxNode, is_paren: bool):
         super().__init__(is_paren)
         self.var = var
         self.expr = expr

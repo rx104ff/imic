@@ -121,8 +121,10 @@ class Parser:
         else:
             self.abort("Invalid environment")
 
-    def parse_program_token(self, tokens, is_paren=False) -> SyntaxNode:
+    def parse_program_token(self, tokens, is_paren=False) -> Optional[SyntaxNode]:
         stack = []
+        if len(tokens) == 0:
+            return SyntaxNode(False)
         if len(tokens) == 1:
             token = tokens[0]
             if token.kind == TokenType.NUMBER:
@@ -138,17 +140,26 @@ class Parser:
                 if not stack or stack[-1].kind != TokenType.OPEN_PAREN:
                     self.abort("Unmatched parenthesis")
                 stack.pop()
-            elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS or token.kind == TokenType.LT:
+            elif token.kind == TokenType.LT:
                 if not stack:
                     left = self.parse_program_token(tokens[0:index])
                     right = self.parse_program_token(tokens[index + 1::])
                     return BinOp(left, token.kind, right, is_paren)
-            elif token.kind == TokenType.ASTERISK:
+            elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS:
                 if not stack:
-                    checker = self.is_root(tokens[index + 1::])
+                    checker = self.precedence_checker(tokens[index + 1::])
                     if checker == -1:
                         self.abort("Unmatched closures")
                     elif checker == 1:
+                        left = self.parse_program_token(tokens[0:index])
+                        right = self.parse_program_token(tokens[index + 1::])
+                        return BinOp(left, token.kind, right, is_paren)
+            elif token.kind == TokenType.ASTERISK:
+                if not stack:
+                    checker = self.precedence_checker(tokens[index + 1::])
+                    if checker == -1:
+                        self.abort("Unmatched closures")
+                    elif checker == 2:
                         left = self.parse_program_token(tokens[0:index])
                         right = self.parse_program_token(tokens[index + 1::])
                         return BinOp(left, token.kind, right, is_paren)
@@ -191,12 +202,36 @@ class Parser:
             elif token.kind == TokenType.IDENT:
                 if not stack:
                     if tokens[index+1].kind not in bop:
-                        if self.is_root(tokens[index + 1::]) == 1:
-                            var = self.parse_program_token([token])
-                            expr = self.parse_program_token(tokens[index + 1::])
-                            assert (isinstance(var, Var))
-                            return VarApp(var, expr, is_paren)
+                        if self.precedence_checker(tokens[index + 1::]) == 3:
+                            sub_stack = []
+                            for sub_index, sub_token in enumerate(tokens[index+1::]):
+                                if sub_token.kind == TokenType.LET or sub_token.kind == TokenType.IF:
+                                    if not sub_stack:
+                                        var = self.parse_program_token(token[index:sub_index])
+                                        expr = self.parse_program_token(tokens[sub_index::])
+                                        return VarApp(var, expr, is_paren)
+                                elif sub_token.kind == TokenType.OPEN_BRACKET:
+                                    sub_stack.append(sub_token)
+                                elif sub_token.kind == TokenType.CLOSE_PAREN:
+                                    if not sub_stack or sub_stack[-1].kind != TokenType.OPEN_PAREN:
+                                        self.abort("Unmatched parenthesis")
+                                    sub_stack.pop()
 
+                            i = len(tokens) - 1
+                            if tokens[i].kind == TokenType.CLOSE_PAREN:
+                                sub_stack.append(tokens[i])
+                                i -= 1
+                                while i > index and sub_stack:
+                                    if tokens[i].kind == TokenType.CLOSE_PAREN:
+                                        sub_stack.append(tokens[i])
+                                    elif tokens[i].kind == TokenType.OPEN_BRACKET:
+                                        if not sub_stack or sub_stack[-1].kind != TokenType.CLOSE_PAREN:
+                                            self.abort("Unmatched parenthesis")
+                                    sub_stack.pop()
+                                    i -= 1
+                            var = self.parse_program_token(tokens[index:i])
+                            expr = self.parse_program_token(tokens[i::])
+                            return VarApp(var, expr, is_paren)
         return self.parse_program_token(tokens[1:-1], True)
 
     @staticmethod
@@ -217,7 +252,7 @@ class Parser:
         return -1
 
     @staticmethod
-    def is_root(tokens):
+    def precedence_checker(tokens):
         stack = []
         for i, token in enumerate(tokens):
             if token.kind in close_closures:
@@ -227,10 +262,16 @@ class Parser:
                     stack.pop()
             if token.kind in open_closures:
                 stack.append(token)
-            if token.kind == TokenType.PLUS or token == TokenType.MINUS:
+            if token.kind == TokenType.LT:
                 if not stack:
                     return 0
-        return 1
+            elif token.kind == TokenType.PLUS or token == TokenType.MINUS:
+                if not stack:
+                    return 1
+            elif token.kind == TokenType.ASTERISK:
+                if not stack:
+                    return 2
+        return 3
 
     @staticmethod
     def abort(message):

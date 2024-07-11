@@ -5,9 +5,11 @@ from syntax_tree import *
 
 
 def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
+    envs = envs.copy()
     if node is None:
         pass
 
+    #print(f'{envs} |- {node}')
     if isinstance(node, BinOp):
         left_val, left_expr = s_compile(node.left, compiler, envs)
         right_val, right_expr = s_compile(node.right, compiler, envs)
@@ -30,12 +32,13 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
         return compiler.eval_if(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr), if_expr,
                                 then_expr, else_expr, if_val, then_val, else_val)
     elif isinstance(node, Let):
-        env_and_fun, fun_expr = compiler.eval_fun(str(envs), str(node.var), str(node.fun))
+        val_fun, expr_fun = s_compile(node.fun, compiler, envs)
+
         parser = Parser()
-        sub_envs = parser.parse_env(f'{str(node.var)} = {env_and_fun}')
+        sub_envs = parser.parse_env(f'{str(node.var)} = {val_fun}')
 
         val, sub_expr = s_compile(node.in_expr, compiler, envs + sub_envs)
-        return compiler.eval_let(str(envs), str(node.var), str(node.fun), str(node.in_expr), fun_expr,
+        return compiler.eval_let(str(envs), str(node.var), str(node.fun), str(node.in_expr), expr_fun,
                                  sub_expr, val)
     elif isinstance(node, VarApp):
         val_1, sub_expr_1 = s_compile(node.var, compiler, envs)
@@ -69,7 +72,7 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
         if node.name == envs.get_current().var.text:
             return compiler.eval_var1(str(envs), str(node), envs.get_current_val())
         else:
-            val, sub_expr = s_compile(node, compiler, envs.pop())
+            val, sub_expr = s_compile(node, compiler, envs.copy().pop())
             return compiler.eval_var2(str(envs), str(node), sub_expr, val)
     elif isinstance(node, Bool):
         return compiler.eval_bool(str(envs), str(node))

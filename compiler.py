@@ -58,8 +58,8 @@ class Compiler:
     @staticmethod
     def eval_var2(environment: str, expr: str, sub_expr: str, val: str) -> (any, str):
         evalto = (f'{environment} |- {expr} evalto {val} by E-Var2{{\n'
-                  f'    {sub_expr} \n'
-                  f'}};\n')
+                  f'    {sub_expr}'
+                  f'}};')
         return val, evalto
 
     @staticmethod
@@ -69,10 +69,10 @@ class Compiler:
                   val_1: str, val_2: str) -> (any, str):
         value = int(val_1) + int(val_2)
         evalto = (f'{environment} |- {expr_1} + {expr_2} evalto {value} by E-Plus {{\n'
-                  f'    {sub_expr_1} \n'
-                  f'    {sub_expr_2} \n'
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
                   f'    {val_1} plus {val_2} is {value} by B-Plus {{}}; \n'
-                  f'}};\n')
+                  f'}};')
         return value, evalto
 
     @staticmethod
@@ -82,10 +82,10 @@ class Compiler:
                    val_1: str, val_2: str) -> (any, str):
         value = int(val_1) - int(val_2)
         evalto = (f'{environment} |- {expr_1} - {expr_2} evalto {value} by E-Minus {{\n'
-                  f'    {sub_expr_1} \n'
-                  f'    {sub_expr_2} \n'
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
                   f'    {val_1} minus {val_2} is {value} by B-Minus {{}}; \n'
-                  f'}};\n')
+                  f'}};')
         return value, evalto
 
     @staticmethod
@@ -95,10 +95,10 @@ class Compiler:
                    val_1: str, val_2: str) -> (any, str):
         value = int(val_1) * int(val_2)
         evalto = (f'{environment} |- {expr_1} * {expr_2} evalto {value} by E-Times {{\n'
-                  f'    {sub_expr_1} \n'
-                  f'    {sub_expr_2} \n'
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
                   f'    {val_1} times {val_2} is {value} by B-Times {{}}; \n'
-                  f'}};\n')
+                  f'}};')
         return value, evalto
 
     @staticmethod
@@ -108,10 +108,10 @@ class Compiler:
                 val_1: str, val_2: str) -> (any, str):
         value = int(val_1) < int(val_2)
         evalto = (f'{environment} |- {expr_1} < {expr_2} evalto {value} by E-Lt {{\n'
-                  f'    {sub_expr_1} \n'
-                  f'    {sub_expr_2} \n'
-                  f'    {val_1} less than {val_2} is {value} by B-Lt {{}}; \n'
-                  f'}};\n')
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
+                  f'    {val_1} less than {val_2} is {value} by B-Lt {{}};'
+                  f'}};')
         return value, evalto
 
     @staticmethod
@@ -120,9 +120,9 @@ class Compiler:
                  sub_expr_1: str, sub_expr_2: str,
                  val: str) -> (any, str):
         evalto = (f'{environment} |- let {ident} = {expr_1} in {expr_2} evalto {val} by E-Let {{\n'
-                  f'    {sub_expr_1} \n'
-                  f'    {sub_expr_2} \n'
-                  f'}};\n')
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
+                  f'}};')
         return val, evalto
 
     @staticmethod
@@ -136,20 +136,20 @@ class Compiler:
             val = else_val
         if bool(bool_val):
             evalto = (f'{environment} |- if {expr_1} then {expr_2} else {expr_3} evalto {val} by E-IfT {{\n'
-                      f'    {sub_expr_1} \n'
-                      f'    {sub_expr_2} \n'
-                      f'}};\n')
+                      f'    {sub_expr_1}'
+                      f'    {sub_expr_2}'
+                      f'}};')
         else:
             evalto = (f'{environment} |- if {expr_1} then {expr_2} else {expr_3} evalto {val} by E-IfF {{\n'
-                      f'    {sub_expr_1} \n'
-                      f'    {sub_expr_3} \n'
-                      f'}};\n')
+                      f'    {sub_expr_1}'
+                      f'    {sub_expr_3}'
+                      f'}};')
         return val, evalto
 
     @staticmethod
     def eval_fun(environment, ident, expr):
-        value = f'({environment})[{expr}]'
-        evalto = f'{environment} |- {expr} evalto {value} by E-Fun{{}};\n'
+        value = f'({environment})[fun {ident} -> {expr}]'
+        evalto = f'{environment} |- fun {ident} -> {expr} evalto {value} by E-Fun{{}};\n'
         return value, evalto
 
     @staticmethod
@@ -158,10 +158,10 @@ class Compiler:
                  sub_expr_1: str, sub_expr_2: str, sub_expr_3: str,
                  val: str) -> (any, str):
         evalto = (f'{environment} |- {ident} {expr} evalto {val} by E-App {{\n'
-                  f'    {sub_expr_1} \n'
-                  f'    {sub_expr_2} \n'
-                  f'    {sub_expr_3} \n'
-                  f'}};\n')
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
+                  f'    {sub_expr_3}'
+                  f'}};')
         return val, evalto
 
     @staticmethod
@@ -172,8 +172,8 @@ class Compiler:
                      val: str):
         evalto = (
             f'{environment} |- let rec {ident_1} = fun {ident_2} -> {expr_1} in {expr_2} evalto {val} by E-LetRec {{\n'
-            f'    {sub_expr} \n'
-            f'}};\n')
+            f'    {sub_expr}'
+            f'}};')
         return val, evalto
 
     @staticmethod
@@ -182,8 +182,8 @@ class Compiler:
                      sub_expr_1: str, sub_expr_2: str, sub_expr_3: str,
                      val: str) -> (any, str):
         evalto = (f'{environment} |- {expr_1} {expr_2} evalto {val} by E-AppRec {{\n'
-                  f'    {sub_expr_1} \n'
-                  f'    {sub_expr_2} \n'
-                  f'    {sub_expr_3} \n'
-                  f'}};\n')
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
+                  f'    {sub_expr_3}'
+                  f'}};')
         return val, evalto
