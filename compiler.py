@@ -52,7 +52,7 @@ class Compiler:
     @staticmethod
     def eval_int(environment, expr):
         value = expr
-        evalto = f'{environment} |- {expr} evalto {value} by E-Int{{}};'
+        evalto = f'{environment} |- {expr} evalto {value} by E-Int{{}};\n'
         return value, evalto
 
     @staticmethod
