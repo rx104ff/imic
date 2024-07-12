@@ -110,10 +110,8 @@ class Parser:
             return Env(TokenType.FUN, var, val)
         elif tokens[2].kind == TokenType.BOOL:
             return Env(TokenType.BOOL, var, val)
-        elif tokens[2].kind == TokenType.NUMBER:
-            return Env(TokenType.NUMBER, var, val)
         else:
-            self.abort("Invalid environment")
+            return Env(TokenType.NUMBER, var, val)
 
     def parse_program_token(self, tokens, is_paren=False) -> Optional[SyntaxNode]:
         stack = []
@@ -266,7 +264,7 @@ class Parser:
             if token.kind == TokenType.LT:
                 if not stack:
                     return 0
-            elif token.kind == TokenType.PLUS or token == TokenType.MINUS:
+            elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS:
                 if not stack:
                     return 1
             elif token.kind == TokenType.ASTERISK:

@@ -4,6 +4,15 @@ from collections import OrderedDict
 
 class Compiler:
     @staticmethod
+    def parse_int(a: any):
+        if isinstance(a, int):
+            return a
+        elif isinstance(a, str):
+            return int(a.strip().replace(' ', ''))
+        else:
+            return int(a)
+
+    @staticmethod
     def parse_fun(fun):
         pattern = r'fun\s+(\w+)\s+->\s+(.*)'
         match = regex.match(pattern, fun)
@@ -67,7 +76,7 @@ class Compiler:
                   expr_1: str, expr_2: str,
                   sub_expr_1: str, sub_expr_2: str,
                   val_1: str, val_2: str) -> (any, str):
-        value = int(val_1) + int(val_2)
+        value = Compiler.parse_int(val_1) + Compiler.parse_int(val_2)
         evalto = (f'{environment} |- {expr_1} + {expr_2} evalto {value} by E-Plus {{\n'
                   f'    {sub_expr_1}'
                   f'    {sub_expr_2}'
@@ -80,7 +89,7 @@ class Compiler:
                    expr_1: str, expr_2: str,
                    sub_expr_1: str, sub_expr_2: str,
                    val_1: str, val_2: str) -> (any, str):
-        value = int(val_1) - int(val_2)
+        value = Compiler.parse_int(val_1) - Compiler.parse_int(val_2)
         evalto = (f'{environment} |- {expr_1} - {expr_2} evalto {value} by E-Minus {{\n'
                   f'    {sub_expr_1}'
                   f'    {sub_expr_2}'
@@ -93,7 +102,7 @@ class Compiler:
                    expr_1: str, expr_2: str,
                    sub_expr_1: str, sub_expr_2: str,
                    val_1: str, val_2: str) -> (any, str):
-        value = int(val_1) * int(val_2)
+        value = Compiler.parse_int(val_1) * Compiler.parse_int(val_2)
         evalto = (f'{environment} |- {expr_1} * {expr_2} evalto {value} by E-Times {{\n'
                   f'    {sub_expr_1}'
                   f'    {sub_expr_2}'
@@ -106,7 +115,7 @@ class Compiler:
                 expr_1: str, expr_2: str,
                 sub_expr_1: str, sub_expr_2: str,
                 val_1: str, val_2: str) -> (any, str):
-        value = int(val_1) < int(val_2)
+        value = Compiler.parse_int(val_1) < Compiler.parse_int(val_2)
         evalto = (f'{environment} |- {expr_1} < {expr_2} evalto {value} by E-Lt {{\n'
                   f'    {sub_expr_1}'
                   f'    {sub_expr_2}'
@@ -147,6 +156,32 @@ class Compiler:
         return val, evalto
 
     @staticmethod
+    def eval_if_true(environment: str,
+                     if_expr: str, then_expr: str, else_expr: str,
+                     sub_expr_1: str, sub_expr_2: str,
+                     val: str) -> (any, str):
+
+        evalto = (f'{environment} |- if {if_expr} then {then_expr} else {else_expr} evalto {val} by E-IfT {{\n'
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
+                  f'}};')
+
+        return val, evalto
+
+    @staticmethod
+    def eval_if_false(environment: str,
+                      expr_1: str, expr_2: str, expr_3: str,
+                      sub_expr_1: str, sub_expr_2: str,
+                      val: str) -> (any, str):
+
+        evalto = (f'{environment} |- if {expr_1} then {expr_2} else {expr_3} evalto {val} by E-IfF {{\n'
+                  f'    {sub_expr_1}'
+                  f'    {sub_expr_2}'
+                  f'}};')
+
+        return val, evalto
+
+    @staticmethod
     def eval_fun(environment, ident, expr):
         value = f'({environment})[fun {ident} -> {expr}]'
         evalto = f'{environment} |- fun {ident} -> {expr} evalto {value} by E-Fun{{}};\n'
@@ -175,6 +210,11 @@ class Compiler:
             f'    {sub_expr}'
             f'}};')
         return val, evalto
+
+    @staticmethod
+    def eval_rec(environment, ident_1, ident_2, expr):
+        value = f'{ident_1} = ({environment})[rec {ident_1} = fun {ident_2} -> {expr}]'
+        return value
 
     @staticmethod
     def eval_app_rec(environment,

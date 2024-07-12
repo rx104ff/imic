@@ -9,7 +9,7 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
     if node is None:
         pass
 
-    print(f'{envs} |- {node}')
+    #print(f'{envs} |- {node}')
     if isinstance(node, BinOp):
         left_val, left_expr = s_compile(node.left, compiler, envs)
         right_val, right_expr = s_compile(node.right, compiler, envs)
@@ -27,10 +27,14 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
                                     left_val, right_val)
     elif isinstance(node, IfThenElse):
         if_val, if_expr = s_compile(node.ifExpr, compiler, envs)
-        then_val, then_expr = s_compile(node.thenExpr, compiler, envs)
-        else_val, else_expr = s_compile(node.elseExpr, compiler, envs)
-        return compiler.eval_if(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr), if_expr,
-                                then_expr, else_expr, if_val, then_val, else_val)
+        if bool(if_val):
+            then_val, then_expr = s_compile(node.thenExpr, compiler, envs)
+            return compiler.eval_if_true(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
+                                         if_expr, then_expr, then_val)
+        else:
+            else_val, else_expr = s_compile(node.elseExpr, compiler, envs)
+            return compiler.eval_if_false(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
+                                          if_expr, else_expr, else_val)
     elif isinstance(node, Let):
         val_fun, expr_fun = s_compile(node.fun, compiler, envs)
 
@@ -50,7 +54,7 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
             val, expr = s_compile(sub_expr, compiler, sub_envs + new_env)
             return compiler.eval_app_rec(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val)
         else:
-            assert(isinstance(sub_var, Var))
+            assert (isinstance(sub_var, Var))
             new_env = parser.parse_env(f'{sub_var.name} = {val_2}')
             val, expr = s_compile(sub_expr, compiler, sub_envs + new_env)
             return compiler.eval_app(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val)
@@ -58,14 +62,13 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
         env_and_fun, expr = compiler.eval_fun(str(envs), node.var, node.expr)
         return env_and_fun, expr
     elif isinstance(node, RecFun):
-        env_and_fun, fun_expr = compiler.eval_fun(str(envs), node.fun.var, node.fun.expr)
-        sub_val, sub_expr = s_compile(node, compiler, envs)
         parser = Parser()
-        sub_envs = parser.parse_env(env_and_fun[0])
-        sub_envs.append(parser.parse_env_token(Lexer(f'{node.fun.var} = {sub_val}')))
-        fun = parser.parse_program(env_and_fun[1])
-        val, expr = s_compile(fun, compiler, sub_envs)
-        return compiler.eval_app_rec(str(envs), str(node.fun), str(node.in_expr), fun_expr, sub_expr, expr, val)
+        val = compiler.eval_rec(str(envs), node.var, node.fun.var, node.fun.expr)
+        new_envs = parser.parse_env(val)
+        sub_val, sub_expr = s_compile(node.in_expr, compiler, envs + new_envs)
+        env_and_fun, fun_expr = compiler.eval_let_rec(str(envs), node.var, node.fun.var, node.fun.expr, node.in_expr,
+                                                      sub_expr, sub_val)
+        return env_and_fun, fun_expr
     elif isinstance(node, Num):
         return compiler.eval_int(str(envs), str(node))
     elif isinstance(node, Var):
@@ -94,5 +97,5 @@ def program(prog_input):
 
     s = s_compile(program_tree, Compiler(), env_list)
     print(s[1])
-    #dot = program_tree.visualize_tree()
-    #dot.render('tree', format='png', view=True)
+    # dot = program_tree.visualize_tree()
+    # dot.render('tree', format='png', view=True)
