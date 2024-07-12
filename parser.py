@@ -1,5 +1,5 @@
-from syntax_tree import *
-from env_list import *
+from stree import *
+from env import *
 from typing import Optional
 import re
 

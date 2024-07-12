@@ -1,63 +1,63 @@
 from compiler import Compiler
-from env_list import EnvList
+from env import EnvList
 from parser import Parser
-from syntax_tree import *
+from stree import *
 
 
-def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
+def s_compile(node, compiler: Compiler, envs: EnvList, depth=1) -> (any, str):
     envs = envs.copy()
     if node is None:
         pass
 
     #print(f'{envs} |- {node}')
     if isinstance(node, BinOp):
-        left_val, left_expr = s_compile(node.left, compiler, envs)
-        right_val, right_expr = s_compile(node.right, compiler, envs)
+        left_val, left_expr = s_compile(node.left, compiler, envs, depth+1)
+        right_val, right_expr = s_compile(node.right, compiler, envs, depth+1)
         if node.op == TokenType.MINUS:
             return compiler.eval_minus(str(envs), str(node.left), str(node.right), left_expr, right_expr,
-                                       left_val, right_val)
+                                       left_val, right_val, depth)
         elif node.op == TokenType.PLUS:
             return compiler.eval_plus(str(envs), str(node.left), str(node.right), left_expr, right_expr,
-                                      left_val, right_val)
+                                      left_val, right_val, depth)
         elif node.op == TokenType.ASTERISK:
             return compiler.eval_times(str(envs), str(node.left), str(node.right), left_expr, right_expr,
-                                       left_val, right_val)
+                                       left_val, right_val, depth)
         elif node.op == TokenType.LT:
             return compiler.eval_lt(str(envs), str(node.left), str(node.right), left_expr, right_expr,
-                                    left_val, right_val)
+                                    left_val, right_val, depth)
     elif isinstance(node, IfThenElse):
-        if_val, if_expr = s_compile(node.ifExpr, compiler, envs)
+        if_val, if_expr = s_compile(node.ifExpr, compiler, envs, depth+1)
         if bool(if_val):
-            then_val, then_expr = s_compile(node.thenExpr, compiler, envs)
+            then_val, then_expr = s_compile(node.thenExpr, compiler, envs, depth+1)
             return compiler.eval_if_true(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
-                                         if_expr, then_expr, then_val)
+                                         if_expr, then_expr, then_val, depth)
         else:
-            else_val, else_expr = s_compile(node.elseExpr, compiler, envs)
+            else_val, else_expr = s_compile(node.elseExpr, compiler, envs, depth+1)
             return compiler.eval_if_false(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
-                                          if_expr, else_expr, else_val)
+                                          if_expr, else_expr, else_val, depth)
     elif isinstance(node, Let):
-        val_fun, expr_fun = s_compile(node.fun, compiler, envs)
+        val_fun, expr_fun = s_compile(node.fun, compiler, envs, depth+1)
 
         parser = Parser()
         sub_envs = parser.parse_env(f'{str(node.var)} = {val_fun}')
 
-        val, sub_expr = s_compile(node.in_expr, compiler, envs + sub_envs)
+        val, sub_expr = s_compile(node.in_expr, compiler, envs + sub_envs, depth+1)
         return compiler.eval_let(str(envs), str(node.var), str(node.fun), str(node.in_expr), expr_fun,
-                                 sub_expr, val)
+                                 sub_expr, val, depth)
     elif isinstance(node, VarApp):
-        val_1, sub_expr_1 = s_compile(node.var, compiler, envs)
-        val_2, sub_expr_2 = s_compile(node.expr, compiler, envs)
+        val_1, sub_expr_1 = s_compile(node.var, compiler, envs, depth+1)
+        val_2, sub_expr_2 = s_compile(node.expr, compiler, envs, depth+1)
         parser = Parser()
         sub_envs, sub_rec, sub_var, sub_expr = parser.parse_func(val_1)
         if sub_rec is not None:
             new_env = parser.parse_env(f'{sub_rec.name} = {val_1}, {sub_var} = {val_2}')
-            val, expr = s_compile(sub_expr, compiler, sub_envs + new_env)
-            return compiler.eval_app_rec(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val)
+            val, expr = s_compile(sub_expr, compiler, sub_envs + new_env, depth+1)
+            return compiler.eval_app_rec(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val, depth)
         else:
             assert (isinstance(sub_var, Var))
             new_env = parser.parse_env(f'{sub_var.name} = {val_2}')
-            val, expr = s_compile(sub_expr, compiler, sub_envs + new_env)
-            return compiler.eval_app(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val)
+            val, expr = s_compile(sub_expr, compiler, sub_envs + new_env, depth+1)
+            return compiler.eval_app(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val, depth)
     elif isinstance(node, Fun):
         env_and_fun, expr = compiler.eval_fun(str(envs), node.var, node.expr)
         return env_and_fun, expr
@@ -65,9 +65,9 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
         parser = Parser()
         val = compiler.eval_rec(str(envs), node.var, node.fun.var, node.fun.expr)
         new_envs = parser.parse_env(val)
-        sub_val, sub_expr = s_compile(node.in_expr, compiler, envs + new_envs)
+        sub_val, sub_expr = s_compile(node.in_expr, compiler, envs + new_envs, depth+1)
         env_and_fun, fun_expr = compiler.eval_let_rec(str(envs), node.var, node.fun.var, node.fun.expr, node.in_expr,
-                                                      sub_expr, sub_val)
+                                                      sub_expr, sub_val, depth)
         return env_and_fun, fun_expr
     elif isinstance(node, Num):
         return compiler.eval_int(str(envs), str(node))
@@ -75,8 +75,8 @@ def s_compile(node, compiler: Compiler, envs: EnvList) -> (any, str):
         if node.name == envs.get_current().var.text:
             return compiler.eval_var1(str(envs), str(node), envs.get_current_val())
         else:
-            val, sub_expr = s_compile(node, compiler, envs.copy().pop())
-            return compiler.eval_var2(str(envs), str(node), sub_expr, val)
+            val, sub_expr = s_compile(node, compiler, envs.copy().pop(), depth+1)
+            return compiler.eval_var2(str(envs), str(node), sub_expr, val, depth)
     elif isinstance(node, Bool):
         return compiler.eval_bool(str(envs), str(node))
     return None
