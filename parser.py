@@ -17,7 +17,38 @@ bop = [TokenType.LT, TokenType.MINUS, TokenType.PLUS, TokenType.ASTERISK, TokenT
 
 
 # Parser object keeps track of current token, checks if the code matches the grammar, and emits code along the way.
+def parse_env_token(tokens: [Token]) -> Optional[Env]:
+    if not tokens:
+        return None
+    var = tokens[0]
+    val = tokens[2::]
+    kinds = [token.kind for token in tokens]
+    if TokenType.REC in kinds:
+        return Env(TokenType.REC, var, val)
+    elif TokenType.FUN in kinds:
+        return Env(TokenType.FUN, var, val)
+    elif tokens[2].kind == TokenType.BOOL:
+        return Env(TokenType.BOOL, var, val)
+    else:
+        return Env(TokenType.NUMBER, var, val)
+
+
 class Parser:
+    @staticmethod
+    def validate_expression(expr: [Token]):
+        if not expr:
+            return False
+        stack = []
+        for token in expr:
+            if token.kind in open_closures:
+                stack.append(token)
+            elif token.kind in close_closures:
+                if not stack or stack[-1].kind != close_closures[token.kind]:
+                    return False
+                stack.pop()
+
+        return not stack
+
     @staticmethod
     def match_parts(s):
         # Regex to match the first balanced parentheses part
@@ -79,16 +110,17 @@ class Parser:
                 else:
                     stack -= 1
             elif s == ',':
-                env = env_expr[env_start:i]
-                env_start = i+1
-                env_lex = Lexer(env)
-                parsed_env = self.parse_env_token(env_lex.get_tokens())
-                if parsed_env is not None:
-                    env_list.append(parsed_env)
+                if stack == 0:
+                    env = env_expr[env_start:i]
+                    env_start = i+1
+                    env_lex = Lexer(env)
+                    parsed_env = parse_env_token(env_lex.get_tokens())
+                    if parsed_env is not None:
+                        env_list.append(parsed_env)
 
         env = env_expr[env_start::]
         env_lex = Lexer(env)
-        parsed_env = self.parse_env_token(env_lex.get_tokens())
+        parsed_env = parse_env_token(env_lex.get_tokens())
         env_list.append(parsed_env)
         return env_list
 
@@ -97,21 +129,6 @@ class Parser:
         program_tokens = program_lex.get_tokens()
         program_root = self.parse_program_token(program_tokens)
         return program_root
-
-    def parse_env_token(self, tokens: [Token]) -> Optional[Env]:
-        if not tokens:
-            return None
-        var = tokens[0]
-        val = tokens[2::]
-        kinds = [token.kind for token in tokens]
-        if TokenType.REC in kinds:
-            return Env(TokenType.REC, var, val)
-        elif TokenType.FUN in kinds:
-            return Env(TokenType.FUN, var, val)
-        elif tokens[2].kind == TokenType.BOOL:
-            return Env(TokenType.BOOL, var, val)
-        else:
-            return Env(TokenType.NUMBER, var, val)
 
     def parse_program_token(self, tokens, is_paren=False) -> Optional[SyntaxNode]:
         stack = []
@@ -125,6 +142,12 @@ class Parser:
                 return Var(token.text, is_paren)
             elif token.kind == TokenType.BOOL:
                 return Bool(token.text, is_paren)
+            elif token.kind == TokenType.DOUBLE_BRACKET:
+                return Nil(is_paren)
+        if len(tokens) == 2:
+            token = tokens[0]
+            if token.kind == TokenType.MINUS:
+                return Num(f'-{tokens[1].text}', is_paren)
         for index, token in enumerate(tokens):
             if token.kind == TokenType.OPEN_PAREN:
                 stack.append(token)
@@ -142,16 +165,17 @@ class Parser:
                     checker = self.precedence_checker(tokens[index + 1::])
                     if checker == -1:
                         self.abort("Unmatched closures")
-                    elif checker >= 1:
-                        left = self.parse_program_token(tokens[0:index])
-                        right = self.parse_program_token(tokens[index + 1::])
-                        return BinOp(left, token.kind, right, is_paren)
+                    elif checker > 1:
+                        if Parser.validate_expression(tokens[0:index]):
+                            left = self.parse_program_token(tokens[0:index])
+                            right = self.parse_program_token(tokens[index + 1::])
+                            return BinOp(left, token.kind, right, is_paren)
             elif token.kind == TokenType.ASTERISK:
                 if not stack:
                     checker = self.precedence_checker(tokens[index + 1::])
                     if checker == -1:
                         self.abort("Unmatched closures")
-                    elif checker >= 2:
+                    elif checker > 2:
                         left = self.parse_program_token(tokens[0:index])
                         right = self.parse_program_token(tokens[index + 1::])
                         return BinOp(left, token.kind, right, is_paren)

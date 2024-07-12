@@ -11,6 +11,8 @@ class TokenType(enum.Enum):
     STRING = 3
     BOOL = 4
     COMMA = 5
+    COLON = 6
+    BAR = 7
     # Keywords.
     FUN = 101
     LET = 102
@@ -20,6 +22,10 @@ class TokenType(enum.Enum):
     THEN = 106
     ELSE = 107
     ARROW = 108
+    DOUBLE_COLON = 109
+    DOUBLE_BRACKET = 110
+    MATCH = 111
+    WITH = 112
     # Operators.
     EQ = 201
     PLUS = 202
@@ -105,6 +111,8 @@ class Lexer:
         elif self.cur_char == '<':
             # Check whether this is token is <
             token = Token(self.cur_char, TokenType.LT)
+        elif self.cur_char == '|':
+            token = Token(self.cur_char, TokenType.BAR)
         elif self.cur_char == '(':
             # Check whether this is token is (
             token = Token(self.cur_char, TokenType.OPEN_PAREN)
@@ -112,11 +120,23 @@ class Lexer:
             # Check whether this is token is )
             token = Token(self.cur_char, TokenType.CLOSE_PAREN)
         elif self.cur_char == '[':
-            # Check whether this is token is (
-            token = Token(self.cur_char, TokenType.OPEN_BRACKET)
+            if self.peek() == ']':
+                last_char = self.cur_char
+                self.next_char()
+                token = Token(last_char + self.cur_char, TokenType.DOUBLE_BRACKET)
+            else:
+                # Check whether this is token is [
+                token = Token(self.cur_char, TokenType.OPEN_BRACKET)
         elif self.cur_char == ']':
-            # Check whether this is token is )
+            # Check whether this is token is ]
             token = Token(self.cur_char, TokenType.CLOSE_BRACKET)
+        elif self.cur_char == ':':
+            if self.peek() == ':':
+                last_char = self.cur_char
+                self.next_char()
+                token = Token(last_char + self.cur_char, TokenType.DOUBLE_COLON)
+            else:
+                token = Token(self.cur_char, TokenType.COLON)
         elif self.cur_char.isdigit():
             # Leading character is a digit, so this must be a number.
             # Get all consecutive digits.

@@ -153,6 +153,17 @@ class Bool(SyntaxNode):
             return f'{self.value}'
 
 
+class Nil(SyntaxNode):
+    def __init__(self, is_paren):
+        super().__init__(is_paren)
+
+    def __str__(self):
+        if self.is_paren:
+            return f'([])'
+        else:
+            return f'[]'
+
+
 class IfThenElse(SyntaxNode):
     def __init__(self, if_expr: SyntaxNode, then_expr: SyntaxNode, else_expr: SyntaxNode, is_paren: bool):
         super().__init__(is_paren)

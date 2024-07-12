@@ -22,8 +22,9 @@ class EnvList:
     def __add__(self, other):
         if isinstance(other, EnvList):
             if self.envs is not None and len(self.envs) > 0 and self.envs[0] is not None:
-                self.envs = self.envs + other.envs
-                return self
+                new_env = EnvList()
+                new_env.envs = self.envs + other.envs
+                return new_env
             else:
                 return other
 

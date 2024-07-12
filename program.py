@@ -96,6 +96,6 @@ def program(prog_input):
     program_tree = parser.parse_program(prg)
 
     s = s_compile(program_tree, Compiler(), env_list)
-    print(s[1])
+    return s[1]
     # dot = program_tree.visualize_tree()
     # dot.render('tree', format='png', view=True)
