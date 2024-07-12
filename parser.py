@@ -40,12 +40,13 @@ class Parser:
             return False
         stack = []
         for token in expr:
-            if token.kind in open_closures:
-                stack.append(token)
-            elif token.kind in close_closures:
+            if token.kind in close_closures:
                 if not stack or stack[-1].kind != close_closures[token.kind]:
                     return False
                 stack.pop()
+            if token.kind in open_closures:
+                stack.append(token)
+
 
         return not stack
 
@@ -277,6 +278,7 @@ class Parser:
     @staticmethod
     def precedence_checker(tokens):
         stack = []
+        flag = False
         for i, token in enumerate(tokens):
             if token.kind in close_closures:
                 if not stack or stack[-1].kind != close_closures[token.kind]:
@@ -284,15 +286,18 @@ class Parser:
                 else:
                     stack.pop()
             if token.kind in open_closures:
+                if token.kind == TokenType.LET or token.kind == TokenType.IF:
+                    if not stack:
+                        flag = True
                 stack.append(token)
             if token.kind == TokenType.LT:
-                if not stack:
+                if not stack and not flag:
                     return 0
             elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS:
-                if not stack:
+                if not stack and not flag:
                     return 1
             elif token.kind == TokenType.ASTERISK:
-                if not stack:
+                if not stack and not flag:
                     return 2
         return 3
 
