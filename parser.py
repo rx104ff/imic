@@ -161,12 +161,22 @@ class Parser:
                     left = self.parse_program_token(tokens[0:index])
                     right = self.parse_program_token(tokens[index + 1::])
                     return BinOp(left, token.kind, right, is_paren)
+            elif token.kind == TokenType.DOUBLE_COLON:
+                if not stack:
+                    checker = self.precedence_checker(tokens[index + 1::])
+                    if checker == -1:
+                        self.abort("Unmatched closures")
+                    elif checker >= 1:
+                        if Parser.validate_expression(tokens[0:index]):
+                            head = self.parse_program_token(tokens[0:index])
+                            tail = self.parse_program_token(tokens[index + 1::])
+                            return ListNode(head, tail, is_paren)
             elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS:
                 if not stack:
                     checker = self.precedence_checker(tokens[index + 1::])
                     if checker == -1:
                         self.abort("Unmatched closures")
-                    elif checker > 1:
+                    elif checker > 2:
                         if Parser.validate_expression(tokens[0:index]):
                             left = self.parse_program_token(tokens[0:index])
                             right = self.parse_program_token(tokens[index + 1::])
@@ -176,7 +186,7 @@ class Parser:
                     checker = self.precedence_checker(tokens[index + 1::])
                     if checker == -1:
                         self.abort("Unmatched closures")
-                    elif checker > 2:
+                    elif checker > 3:
                         left = self.parse_program_token(tokens[0:index])
                         right = self.parse_program_token(tokens[index + 1::])
                         return BinOp(left, token.kind, right, is_paren)
@@ -219,7 +229,7 @@ class Parser:
             elif token.kind == TokenType.IDENT:
                 if not stack:
                     #test = self.precedence_checker(tokens[index + 1::])
-                    if self.precedence_checker(tokens[index + 1::]) == 3:
+                    if self.precedence_checker(tokens[index + 1::]) == 4:
                         sub_stack = []
                         for sub_index, sub_token in enumerate(tokens[index + 1::]):
                             if sub_token.kind == TokenType.LET or sub_token.kind == TokenType.IF:
@@ -293,13 +303,16 @@ class Parser:
             if token.kind == TokenType.LT:
                 if not stack and not flag:
                     return 0
-            elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS:
+            elif token.kind == TokenType.DOUBLE_COLON:
                 if not stack and not flag:
                     return 1
-            elif token.kind == TokenType.ASTERISK:
+            elif token.kind == TokenType.PLUS or token.kind == TokenType.MINUS:
                 if not stack and not flag:
                     return 2
-        return 3
+            elif token.kind == TokenType.ASTERISK:
+                if not stack and not flag:
+                    return 3
+        return 4
 
     @staticmethod
     def abort(message):

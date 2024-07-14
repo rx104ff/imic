@@ -56,6 +56,12 @@ class Compiler:
         return value, evalto
 
     @staticmethod
+    def eval_nil(environment, expr):
+        value = expr
+        evalto = f'{environment} |- {expr} evalto {value} by E-Cons{{}};\n'
+        return value, evalto
+
+    @staticmethod
     def eval_bool(environment: str, expr: str) -> (any, str):
         value = expr
         evalto = f'{environment} |- {expr} evalto {value} by E-bool{{}};\n'
@@ -70,7 +76,7 @@ class Compiler:
     def eval_var2(environment: str, expr: str, sub_expr: str, val: str, depth: int) -> (any, str):
         evalto = (f'{environment} |- {expr} evalto {val} by E-Var2{{\n'
                   f'{Compiler.base_indent * depth}{sub_expr}'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
         return val, evalto
 
     @staticmethod
@@ -84,7 +90,7 @@ class Compiler:
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
                   f'{Compiler.base_indent * depth}{val_1} plus {val_2} is {value} by B-Plus {{}};\n'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
         return value, evalto
 
     @staticmethod
@@ -98,7 +104,7 @@ class Compiler:
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
                   f'{Compiler.base_indent * depth}{val_1} minus {val_2} is {value} by B-Minus {{}}; \n'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
         return value, evalto
 
     @staticmethod
@@ -112,7 +118,7 @@ class Compiler:
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
                   f'{Compiler.base_indent * depth}{val_1} times {val_2} is {value} by B-Times {{}}; \n'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
 
         return value, evalto
 
@@ -127,7 +133,7 @@ class Compiler:
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
                   f'{Compiler.base_indent * depth}{val_1} less than {val_2} is {value} by B-Lt {{}};\n'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
 
         return value, evalto
 
@@ -140,7 +146,20 @@ class Compiler:
         evalto = (f'{environment} |- let {ident} = {expr_1} in {expr_2} evalto {val} by E-Let {{\n'
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
+
+        return val, evalto
+
+    @staticmethod
+    def eval_cons(environment: str, list_expr: str,
+                  head_expr: str, tail_expr: str,
+                  head_val: str, tail_val: str,
+                  depth: int) -> (any, str):
+        val = f'{head_val}::{tail_val}'
+        evalto = (f'{environment} |- {list_expr} evalto {val} by E-Cons {{\n'
+                  f'{Compiler.base_indent * depth}{head_expr}'
+                  f'{Compiler.base_indent * depth}{tail_expr}'
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
 
         return val, evalto
 
@@ -154,7 +173,7 @@ class Compiler:
         evalto = (f'{environment} |- if {if_expr} then {then_expr} else {else_expr} evalto {val} by E-IfT {{\n'
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
 
         return val, evalto
 
@@ -168,7 +187,7 @@ class Compiler:
         evalto = (f'{environment} |- if {expr_1} then {expr_2} else {expr_3} evalto {val} by E-IfF {{\n'
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
 
         return val, evalto
 
@@ -188,7 +207,7 @@ class Compiler:
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
                   f'{Compiler.base_indent * depth}{sub_expr_3}'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
         return val, evalto
 
     @staticmethod
@@ -201,7 +220,7 @@ class Compiler:
         evalto = (
             f'{environment} |- let rec {ident_1} = fun {ident_2} -> {expr_1} in {expr_2} evalto {val} by E-LetRec {{\n'
             f'{Compiler.base_indent * depth}{sub_expr}'
-            f'{Compiler.base_indent * (depth-1)}}};\n')
+            f'{Compiler.base_indent * (depth - 1)}}};\n')
         return val, evalto
 
     @staticmethod
@@ -219,5 +238,5 @@ class Compiler:
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
                   f'{Compiler.base_indent * depth}{sub_expr_3}'
-                  f'{Compiler.base_indent * (depth-1)}}};\n')
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
         return val, evalto

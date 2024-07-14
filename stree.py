@@ -191,6 +191,18 @@ class Fun(SyntaxNode):
             return f'fun {str(self.var)} -> {str(self.expr)}'
 
 
+class ListNode(SyntaxNode):
+    def __init__(self, head_expr, tail_expr, is_paren: bool):
+        super().__init__(is_paren)
+        self.head_expr = head_expr
+        self.tail_expr = tail_expr
+
+    def __str__(self):
+        if self.is_paren:
+            return f'({str(self.head_expr)}::{str(self.tail_expr)})'
+        else:
+            return f'{str(self.head_expr)}::{str(self.tail_expr)}'
+
 class VarApp(SyntaxNode):
     def __init__(self, var: SyntaxNode, expr: SyntaxNode, is_paren: bool):
         super().__init__(is_paren)
