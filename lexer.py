@@ -173,7 +173,7 @@ class Lexer:
             token = Token('', TokenType.EOF)
         else:
             # Unknown token!
-            self.abort("Unknown token: " + self.cur_char)
+            self.abort("Unknown token: " + self.source)
             #pass
 
         self.next_char()

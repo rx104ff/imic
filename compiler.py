@@ -58,7 +58,7 @@ class Compiler:
     @staticmethod
     def eval_nil(environment, expr):
         value = expr
-        evalto = f'{environment} |- {expr} evalto {value} by E-Cons{{}};\n'
+        evalto = f'{environment} |- {expr} evalto {value} by E-Nil{{}};\n'
         return value, evalto
 
     @staticmethod
@@ -159,6 +159,30 @@ class Compiler:
         evalto = (f'{environment} |- {list_expr} evalto {val} by E-Cons {{\n'
                   f'{Compiler.base_indent * depth}{head_expr}'
                   f'{Compiler.base_indent * depth}{tail_expr}'
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
+
+        return val, evalto
+
+    @staticmethod
+    def eval_match_nil(environment: str, match_with_expr: str,
+                       match_expr: str, nil_expr: str,
+                       val: str,
+                       depth: int) -> (any, str):
+        evalto = (f'{environment} |- {match_with_expr} evalto {val} by E-MatchNil {{\n'
+                  f'{Compiler.base_indent * depth}{match_expr}'
+                  f'{Compiler.base_indent * depth}{nil_expr}'
+                  f'{Compiler.base_indent * (depth - 1)}}};\n')
+
+        return val, evalto
+
+    @staticmethod
+    def eval_match_cons(environment: str, match_with_expr: str,
+                        match_expr: str, cons_expr: str,
+                        val: str,
+                        depth: int) -> (any, str):
+        evalto = (f'{environment} |- {match_with_expr} evalto {val} by E-MatchCons {{\n'
+                  f'{Compiler.base_indent * depth}{match_expr}'
+                  f'{Compiler.base_indent * depth}{cons_expr}'
                   f'{Compiler.base_indent * (depth - 1)}}};\n')
 
         return val, evalto

@@ -203,6 +203,7 @@ class ListNode(SyntaxNode):
         else:
             return f'{str(self.head_expr)}::{str(self.tail_expr)}'
 
+
 class VarApp(SyntaxNode):
     def __init__(self, var: SyntaxNode, expr: SyntaxNode, is_paren: bool):
         super().__init__(is_paren)
@@ -228,6 +229,33 @@ class Let(SyntaxNode):
             return f'(let {str(self.var)} = {str(self.fun)} in {str(self.in_expr)})'
         else:
             return f'let {str(self.var)} = {str(self.fun)} in {str(self.in_expr)}'
+
+
+class With(SyntaxNode):
+    def __init__(self, var_expr: SyntaxNode, evalto_expr: SyntaxNode, is_paren: bool):
+        super().__init__(is_paren)
+        self.var_expr = var_expr
+        self.evalto_expr = evalto_expr
+
+    def __str__(self):
+        if self.is_paren:
+            return f'({str(self.var_expr)} -> {self.evalto_expr})'
+        else:
+            return f'{str(self.var_expr)} -> {self.evalto_expr}'
+
+
+class Match(SyntaxNode):
+    def __init__(self, match_expr: SyntaxNode, nil_expr: With, cons_expr: With, is_paren: bool):
+        super().__init__(is_paren)
+        self.match_expr = match_expr
+        self.nil_expr = nil_expr
+        self.cons_expr = cons_expr
+
+    def __str__(self):
+        if self.is_paren:
+            return f'(match {str(self.match_expr)} with {str(self.nil_expr)} | {str(self.cons_expr)})'
+        else:
+            return f'match {str(self.match_expr)} with {str(self.nil_expr)} | {str(self.cons_expr)}'
 
 
 class RecFun(SyntaxNode):

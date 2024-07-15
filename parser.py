@@ -6,12 +6,14 @@ import re
 open_closures = {TokenType.OPEN_PAREN: TokenType.CLOSE_PAREN,
                  TokenType.LET: TokenType.IN,
                  TokenType.IF: TokenType.THEN,
-                 TokenType.THEN: TokenType.ELSE}
+                 TokenType.THEN: TokenType.ELSE,
+                 TokenType.MATCH: TokenType.WITH}
 
 close_closures = {TokenType.CLOSE_PAREN: TokenType.OPEN_PAREN,
                   TokenType.IN: TokenType.LET,
                   TokenType.THEN: TokenType.IF,
-                  TokenType.ELSE: TokenType.THEN}
+                  TokenType.ELSE: TokenType.THEN,
+                  TokenType.WITH: TokenType.MATCH}
 
 bop = [TokenType.LT, TokenType.MINUS, TokenType.PLUS, TokenType.ASTERISK, TokenType.ARROW, TokenType.EQ]
 
@@ -22,15 +24,44 @@ def parse_env_token(tokens: [Token]) -> Optional[Env]:
         return None
     var = tokens[0]
     val = tokens[2::]
-    kinds = [token.kind for token in tokens]
-    if TokenType.REC in kinds:
-        return Env(TokenType.REC, var, val)
-    elif TokenType.FUN in kinds:
-        return Env(TokenType.FUN, var, val)
-    elif tokens[2].kind == TokenType.BOOL:
-        return Env(TokenType.BOOL, var, val)
-    else:
-        return Env(TokenType.NUMBER, var, val)
+
+    if len(val) == 1:
+        if val[0].kind == TokenType.BOOL:
+            val = EnvBool(val[0])
+            return Env(TokenType.BOOL, var, val)
+        elif val[0].kind == TokenType.NUMBER:
+            val = EnvNum(val[0])
+            return Env(TokenType.NUMBER, var, val)
+        elif val[0].kind == TokenType.DOUBLE_BRACKET:
+            val = EnvNil()
+            return Env(TokenType.DOUBLE_BRACKET, var, val)
+
+    stack = []
+    for i, token in enumerate(val):
+        # Bracket not considered as a closure in this case
+        if token.kind in close_closures:
+            if not stack or stack[-1].kind != close_closures[token.kind]:
+                sys.exit("Error! Closure not match")
+            else:
+                stack.pop()
+        if token.kind in open_closures:
+            stack.append(token)
+
+        if token.kind == TokenType.REC:
+            if not stack:
+                rec = EnvRec(val)
+                return Env(TokenType.REC, var, rec)
+        elif token.kind == TokenType.FUN:
+            if not stack:
+                fun = EnvFun(val)
+                return Env(TokenType.FUN, var, fun)
+        elif token.kind == TokenType.DOUBLE_COLON:
+            if not stack:
+                li = EnvList(val[0:i], val[i+1::])
+                return Env(TokenType.DOUBLE_COLON, var, li)
+
+    # Remove outer parenthesis
+    return parse_env_token(tokens[0:2] + val[1:-1])
 
 
 class Parser:
@@ -46,7 +77,6 @@ class Parser:
                 stack.pop()
             if token.kind in open_closures:
                 stack.append(token)
-
 
         return not stack
 
@@ -82,7 +112,7 @@ class Parser:
 
         return envs, None, None, None
 
-    def parse_func(self, func_expr) -> (EnvList, Var, Var, SyntaxNode):
+    def parse_func(self, func_expr) -> (EnvCollection, Var, Var, SyntaxNode):
         envs_str, rec_var_str, fun_var_str, expr_str = self.match_parts(func_expr)
         envs = self.parse_env(envs_str)
         var = self.parse_program(fun_var_str)
@@ -94,10 +124,10 @@ class Parser:
         else:
             return envs, None, var, expr
 
-    def parse_env(self, env_expr: str) -> EnvList:
+    def parse_env(self, env_expr: str) -> EnvCollection:
         stack = 0
         env_start = 0
-        env_list = EnvList()
+        env_list = EnvCollection()
 
         if not env_expr:
             return env_list
@@ -107,7 +137,7 @@ class Parser:
                 stack += 1
             elif s == ')':
                 if stack == 0:
-                    self.abort("Env: Invalid parenthesis")
+                    self.abort("Env: Invalid parenthesis " + env_expr)
                 else:
                     stack -= 1
             elif s == ',':
@@ -221,6 +251,25 @@ class Parser:
                         expr = self.parse_program_token(tokens[index_in + 1::])
                         assert (isinstance(var, Var))
                         return Let(var, fun, expr, is_paren)
+            elif token.kind == TokenType.MATCH:
+                index_with = self.matcher(tokens[index + 1::], open_closures[token.kind], index + 1)
+                if index_with == -1:
+                    self.abort("Unmatched syntax Match")
+                index_or = self.matcher(tokens[index_with + 1::], TokenType.BAR, index_with + 1)
+                if index_or == -1:
+                    self.abort("Unmatched syntax Match")
+                match_expr = self.parse_program_token(tokens[index + 1:index_with])
+
+                index_nil_arr = self.matcher(tokens[index_with + 1:index_or], TokenType.ARROW, index_with + 1)
+                nil_var = self.parse_program_token([tokens[index_with + 1]])
+                nil_expr = self.parse_program_token(tokens[index_nil_arr + 1:index_or])
+                nil = With(nil_var, nil_expr, False)
+
+                index_cons_arr = self.matcher(tokens[index_or + 1::], TokenType.ARROW, index_or + 1)
+                cons_var = self.parse_program_token(tokens[index_or + 1:index_cons_arr])
+                cons_expr = self.parse_program_token(tokens[index_cons_arr + 1::])
+                cons = With(cons_var, cons_expr, False)
+                return Match(match_expr, nil, cons, is_paren)
             elif token.kind == TokenType.FUN:
                 if not stack:
                     var = self.parse_program_token([tokens[index + 1]])
@@ -269,12 +318,12 @@ class Parser:
         return self.parse_program_token(tokens[1:-1], True)
 
     @staticmethod
-    def matcher(tokens, close_type, start_index):
+    def matcher(tokens, token_type, start_index):
         stack = []
         for i, token in enumerate(tokens):
             if token.kind in close_closures:
                 if not stack or stack[-1].kind != close_closures[token.kind]:
-                    if token.kind == close_type:
+                    if token.kind == token_type:
                         return i + start_index
                     else:
                         return -1
@@ -282,6 +331,9 @@ class Parser:
                     stack.pop()
             if token.kind in open_closures:
                 stack.append(token)
+            if token.kind == token_type:
+                if not stack:
+                    return i + start_index
 
         return -1
 
@@ -296,7 +348,7 @@ class Parser:
                 else:
                     stack.pop()
             if token.kind in open_closures:
-                if token.kind == TokenType.LET or token.kind == TokenType.IF:
+                if token.kind == TokenType.LET or token.kind == TokenType.IF or token.kind == TokenType.MATCH:
                     if not stack:
                         flag = True
                 stack.append(token)

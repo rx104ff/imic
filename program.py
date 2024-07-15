@@ -1,10 +1,11 @@
 from compiler import Compiler
-from env import EnvList
+from env import *
 from parser import Parser
 from stree import *
 
 
-def s_compile(node, compiler: Compiler, envs: EnvList, depth=1) -> (any, str):
+def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, str):
+    #print(f'{envs} |- {node}')
     envs = envs.copy()
     if node is None:
         pass
@@ -28,8 +29,31 @@ def s_compile(node, compiler: Compiler, envs: EnvList, depth=1) -> (any, str):
     elif isinstance(node, ListNode):
         val_head, expr_head = s_compile(node.head_expr, compiler, envs, depth + 1)
         val_tail, expr_tail = s_compile(node.tail_expr, compiler, envs, depth + 1)
+        parser = Parser()
+        val_head_node = parser.parse_env(f'DUMMYVAR = {val_head}').get_current()
+        val_tail_node = parser.parse_env(f'DUMMYVAR = {val_tail}').get_current()
+        if not (val_head_node.kind == TokenType.NUMBER or val_head_node.kind == TokenType.DOUBLE_BRACKET):
+            val_head = f'({val_head})'
+        if not (val_tail_node.kind == TokenType.NUMBER or val_tail_node.kind == TokenType.DOUBLE_BRACKET):
+            val_tail = f'({val_tail})'
         return compiler.eval_cons(str(envs), str(node), str(expr_head), str(expr_tail), val_head,
                                   val_tail, depth)
+    elif isinstance(node, Match):
+        match_val, match_expr = s_compile(node.match_expr, compiler, envs, depth + 1)
+        parser = Parser()
+        match_token = parser.parse_env(f'DUMMYVAR = {match_val}').get_current()
+
+        # Nil type
+        if isinstance(match_token.val, EnvNil):
+            val_nil, expr_nil = s_compile(node.nil_expr.evalto_expr, compiler, envs, depth + 1)
+            return compiler.eval_match_nil(str(envs), str(node), match_expr, expr_nil, val_nil, depth)
+        elif isinstance(match_token.val, EnvList):
+            assert(isinstance(node.cons_expr.var_expr, ListNode))
+            new_envs = parser.parse_env(f'{node.cons_expr.var_expr.head_expr} = {match_token.val.get_head()}, '
+                                        f'{node.cons_expr.var_expr.tail_expr} = {match_token.val.get_tail()}')
+
+            val_cons, expr_cons = s_compile(node.cons_expr.evalto_expr, compiler, envs + new_envs, depth + 1)
+            return compiler.eval_match_cons(str(envs), str(node), match_expr, expr_cons, val_cons, depth)
     elif isinstance(node, IfThenElse):
         if_val, if_expr = s_compile(node.ifExpr, compiler, envs, depth + 1)
         if bool(if_val):
