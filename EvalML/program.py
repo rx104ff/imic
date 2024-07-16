@@ -1,6 +1,6 @@
-from compiler import Compiler
+from EvalML.compiler import Compiler
 from env import *
-from parser import Parser
+from EvalML.parser import Parser
 from stree import *
 
 

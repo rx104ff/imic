@@ -1,4 +1,4 @@
-from program import *
+from EvalML.program import *
 import regex
 
 
@@ -18,7 +18,7 @@ def replace_evar(text):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    a = program('x = 5 |- 1 < x evalto true')
+    a = program('x = 2, y = 2 |- y < x evalto false')
     #print(a.replace('|-','').replace('True', 'true').replace('False', 'false'))
     #print(a.replace('True', 'true').replace('False', 'false'))
     print(replace_evar(a.replace('True', 'true').replace('False', 'false')))
