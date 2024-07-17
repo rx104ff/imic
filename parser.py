@@ -19,22 +19,27 @@ bop = [TokenType.LT, TokenType.MINUS, TokenType.PLUS, TokenType.ASTERISK, TokenT
 
 
 # Parser object keeps track of current token, checks if the code matches the grammar, and emits code along the way.
-def parse_env_token(tokens: [Token]) -> Optional[Env]:
+def parse_program_env_token(tokens: [Token]) -> Optional[ProgramEnv]:
     if not tokens:
         return None
     var = tokens[0]
     val = tokens[2::]
 
     if len(val) == 1:
-        if val[0].kind == TokenType.BOOL:
+        if val[0].kind == TokenType.BOOL_V:
             val = EnvBool(val[0])
-            return Env(TokenType.BOOL, var, val)
+            return ProgramEnv(Env(TokenType.BOOL_V, var, val))
         elif val[0].kind == TokenType.NUMBER:
-            val = EnvNum(val[0])
-            return Env(TokenType.NUMBER, var, val)
+            val = EnvNum(val[0], False)
+            return ProgramEnv(Env(TokenType.NUMBER, var, val))
         elif val[0].kind == TokenType.DOUBLE_BRACKET:
             val = EnvNil()
-            return Env(TokenType.DOUBLE_BRACKET, var, val)
+            return ProgramEnv(Env(TokenType.DOUBLE_BRACKET, var, val))
+
+    if len(val) == 2:
+        if val[0].kind == TokenType.MINUS:
+            val = EnvNum(val[1], True)
+            return ProgramEnv(Env(TokenType.NUMBER, var, val))
 
     stack = []
     for i, token in enumerate(val):
@@ -50,18 +55,61 @@ def parse_env_token(tokens: [Token]) -> Optional[Env]:
         if token.kind == TokenType.REC:
             if not stack:
                 rec = EnvRec(val)
-                return Env(TokenType.REC, var, rec)
+                return ProgramEnv(Env(TokenType.REC, var, rec))
         elif token.kind == TokenType.FUN:
             if not stack:
                 fun = EnvFun(val)
-                return Env(TokenType.FUN, var, fun)
+                return ProgramEnv(Env(TokenType.FUN, var, fun))
         elif token.kind == TokenType.DOUBLE_COLON:
             if not stack:
                 li = EnvList(val[0:i], val[i+1::])
-                return Env(TokenType.DOUBLE_COLON, var, li)
+                return ProgramEnv(Env(TokenType.DOUBLE_COLON, var, li))
 
     # Remove outer parenthesis
-    return parse_env_token(tokens[0:2] + val[1:-1])
+    return parse_program_env_token(tokens[0:2] + val[1:-1])
+
+
+def parse_type_token(val: [Token]) -> (TokenType, EnvType):
+    if len(val) == 1:
+        if val[0].kind == TokenType.BOOL:
+            val = EnvType(val)
+            return TokenType.BOOL, val
+        elif val[0].kind == TokenType.INT:
+            val = EnvType(val)
+            return TokenType.INT, val
+        else:
+            sys.exit("Error: Unknown env " + str(val[0]))
+    else:
+        stack = 0
+        for index, token in enumerate(val):
+            if token.kind == TokenType.OPEN_PAREN:
+                stack +=1
+            elif token.kind == TokenType.CLOSE_PAREN:
+                if stack == 0:
+                    sys.exit("Error: Unmatched parenthesis " + val[0])
+                else:
+                    stack -= 1
+            elif token.kind == TokenType.ARROW:
+                if stack == 0:
+                    val = EnvTypeFun(val, index)
+                    return TokenType.ARROW, val
+
+        if val[-1].kind == TokenType.LIST:
+            val = EnvTypeList(val, val[0:len(val)-1])
+            return TokenType.LIST, val
+
+    # Remove outer parenthesis
+    return parse_type_token(val[1:-1])
+
+
+def parse_type_env_token(tokens: [Token]) -> Optional[TypeEnv]:
+    if not tokens:
+        return None
+    var = tokens[0]
+    val = tokens[2::]
+
+    token_type, val = parse_type_token(val)
+    return TypeEnv(Env(token_type, var, val))
 
 
 class Parser:
@@ -114,7 +162,7 @@ class Parser:
 
     def parse_func(self, func_expr) -> (EnvCollection, Var, Var, SyntaxNode):
         envs_str, rec_var_str, fun_var_str, expr_str = self.match_parts(func_expr)
-        envs = self.parse_env(envs_str)
+        envs = self.parse_program_env(envs_str)
         var = self.parse_program(fun_var_str)
         expr = self.parse_program(expr_str)
 
@@ -124,7 +172,13 @@ class Parser:
         else:
             return envs, None, var, expr
 
-    def parse_env(self, env_expr: str) -> EnvCollection:
+    def parse_program_env(self, env_expr: str) -> EnvCollection:
+        return self.parse_env(env_expr, 'program')
+
+    def parse_type_env(self, env_expr: str) -> EnvCollection:
+        return self.parse_env(env_expr, 'type')
+
+    def parse_env(self, env_expr: str, parse_type: str) -> EnvCollection:
         stack = 0
         env_start = 0
         env_list = EnvCollection()
@@ -145,14 +199,25 @@ class Parser:
                     env = env_expr[env_start:i]
                     env_start = i+1
                     env_lex = Lexer(env)
-                    parsed_env = parse_env_token(env_lex.get_tokens())
+                    if parse_type == 'program':
+                        parsed_env = parse_program_env_token(env_lex.get_tokens())
+                    elif parse_type == 'type':
+                        parsed_env = parse_type_env_token(env_lex.get_tokens())
+                    else:
+                        parsed_env = None
                     if parsed_env is not None:
                         env_list.append(parsed_env)
 
         env = env_expr[env_start::]
         env_lex = Lexer(env)
-        parsed_env = parse_env_token(env_lex.get_tokens())
-        env_list.append(parsed_env)
+        if parse_type == 'program':
+            parsed_env = parse_program_env_token(env_lex.get_tokens())
+        elif parse_type == 'type':
+            parsed_env = parse_type_env_token(env_lex.get_tokens())
+        else:
+            parsed_env = None
+        if parsed_env is not None:
+            env_list.append(parsed_env)
         return env_list
 
     def parse_program(self, program: str) -> SyntaxNode:
@@ -168,17 +233,17 @@ class Parser:
         if len(tokens) == 1:
             token = tokens[0]
             if token.kind == TokenType.NUMBER:
-                return Num(token.text, is_paren)
+                return Num(token, False, is_paren)
             elif token.kind == TokenType.IDENT:
-                return Var(token.text, is_paren)
-            elif token.kind == TokenType.BOOL:
-                return Bool(token.text, is_paren)
+                return Var(token, is_paren)
+            elif token.kind == TokenType.BOOL_V:
+                return Bool(token, is_paren)
             elif token.kind == TokenType.DOUBLE_BRACKET:
                 return Nil(is_paren)
         if len(tokens) == 2:
             token = tokens[0]
             if token.kind == TokenType.MINUS:
-                return Num(f'-{tokens[1].text}', is_paren)
+                return Num(token[1], True, is_paren)
         for index, token in enumerate(tokens):
             if token.kind == TokenType.OPEN_PAREN:
                 stack.append(token)

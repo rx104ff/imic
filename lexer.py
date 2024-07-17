@@ -9,7 +9,7 @@ class TokenType(enum.Enum):
     NUMBER = 1
     IDENT = 2
     STRING = 3
-    BOOL = 4
+    BOOL_V = 4
     COMMA = 5
     COLON = 6
     BAR = 7
@@ -40,6 +40,12 @@ class TokenType(enum.Enum):
     # Nat
     NAT_S = 401
     NAT_Z = 402
+    # Type
+    BOOL = 501
+    INT = 502
+    LIST = 503
+    # Promised
+    PROMISED = 601
 
 
 # Token contains the original text and the type of token.
@@ -56,6 +62,14 @@ class Token:
         for kind in TokenType:
             # Relies on all keyword enum values being 1XX.
             if kind.name == token_txt.upper() and 100 <= kind.value < 200:
+                return kind
+        return None
+
+    @staticmethod
+    def check_if_type(token_txt: str) -> Optional[TokenType]:
+        for kind in TokenType:
+            # Relies on all keyword enum values being 1XX.
+            if kind.name == token_txt.upper() and 500 < kind.value:
                 return kind
         return None
 
@@ -161,12 +175,16 @@ class Lexer:
                 # Check if the token is in the list of keywords.
                 token_txt = self.source[start_pos: self.cur_pos + 1]  # Get the substring.
                 keyword = Token.check_if_keyword(token_txt)
-
+                type_key = Token.check_if_type(token_txt)
                 if token_txt == 'true' or token_txt == 'false':
-                    token = Token(token_txt, TokenType.BOOL)  # Bool
+                    token = Token(token_txt, TokenType.BOOL_V)  # Bool
+                elif token_txt == 'PROMISED':
+                    token = Token(token_txt, TokenType.PROMISED)
+                elif type_key:
+                    token = Token(token_txt, type_key)
                 elif keyword is None:  # Identifier
                     token = Token(token_txt, TokenType.IDENT)
-                else:  # Keyword
+                else: # Keyword
                     token = Token(token_txt, keyword)
         elif self.cur_char == '\0':
             # EOF.

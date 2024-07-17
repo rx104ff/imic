@@ -118,39 +118,46 @@ class BinOp(SyntaxNode):
 
 
 class Num(SyntaxNode):
-    def __init__(self, value, is_paren: bool):
+    def __init__(self, value: Token, is_negative: bool, is_paren: bool):
         super().__init__(is_paren)
         self.value = value
+        self.is_negative = is_negative
 
     def __str__(self):
         if self.is_paren:
-            return f'({self.value})'
+            if self.is_negative:
+                return f'(-{str(self.value)})'
+            else:
+                return f'({str(self.value)})'
         else:
-            return f'{self.value}'
+            if self.is_negative:
+                return f'-{str(self.value)}'
+            else:
+                return f'{str(self.value)}'
 
 
 class Var(SyntaxNode):
-    def __init__(self, name: str, is_paren):
+    def __init__(self, name: Token, is_paren):
         super().__init__(is_paren)
         self.name = name
 
     def __str__(self):
         if self.is_paren:
-            return f'({self.name})'
+            return f'({str(self.name)})'
         else:
-            return f'{self.name}'
+            return f'{str(self.name)}'
 
 
 class Bool(SyntaxNode):
-    def __init__(self, value: str, is_paren):
+    def __init__(self, value: Token, is_paren):
         super().__init__(is_paren)
         self.value = value
 
     def __str__(self):
         if self.is_paren:
-            return f'({self.value})'
+            return f'({str(self.value)})'
         else:
-            return f'{self.value}'
+            return f'{str(self.value)}'
 
 
 class Nil(SyntaxNode):

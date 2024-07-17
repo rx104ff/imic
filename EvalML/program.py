@@ -1,6 +1,6 @@
 from EvalML.compiler import Compiler
 from env import *
-from EvalML.parser import Parser
+from parser import Parser
 from stree import *
 
 
@@ -30,8 +30,8 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
         val_head, expr_head = s_compile(node.head_expr, compiler, envs, depth + 1)
         val_tail, expr_tail = s_compile(node.tail_expr, compiler, envs, depth + 1)
         parser = Parser()
-        val_head_node = parser.parse_env(f'DUMMYVAR = {val_head}').get_current()
-        val_tail_node = parser.parse_env(f'DUMMYVAR = {val_tail}').get_current()
+        val_head_node = parser.parse_program_env(f'DUMMYVAR = {val_head}').get_current()
+        val_tail_node = parser.parse_program_env(f'DUMMYVAR = {val_tail}').get_current()
         if not (val_head_node.kind == TokenType.NUMBER or val_head_node.kind == TokenType.DOUBLE_BRACKET):
             val_head = f'({val_head})'
         if not (val_tail_node.kind == TokenType.NUMBER or val_tail_node.kind == TokenType.DOUBLE_BRACKET):
@@ -41,7 +41,7 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
     elif isinstance(node, Match):
         match_val, match_expr = s_compile(node.match_expr, compiler, envs, depth + 1)
         parser = Parser()
-        match_token = parser.parse_env(f'DUMMYVAR = {match_val}').get_current()
+        match_token = parser.parse_program_env(f'DUMMYVAR = {match_val}').get_current()
 
         # Nil type
         if isinstance(match_token.val, EnvNil):
@@ -49,7 +49,7 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
             return compiler.eval_match_nil(str(envs), str(node), match_expr, expr_nil, val_nil, depth)
         elif isinstance(match_token.val, EnvList):
             assert(isinstance(node.cons_expr.var_expr, ListNode))
-            new_envs = parser.parse_env(f'{node.cons_expr.var_expr.head_expr} = {match_token.val.get_head()}, '
+            new_envs = parser.parse_program_env(f'{node.cons_expr.var_expr.head_expr} = {match_token.val.get_head()}, '
                                         f'{node.cons_expr.var_expr.tail_expr} = {match_token.val.get_tail()}')
 
             val_cons, expr_cons = s_compile(node.cons_expr.evalto_expr, compiler, envs + new_envs, depth + 1)
@@ -68,7 +68,7 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
         val_fun, expr_fun = s_compile(node.fun, compiler, envs, depth + 1)
 
         parser = Parser()
-        sub_envs = parser.parse_env(f'{str(node.var)} = {val_fun}')
+        sub_envs = parser.parse_program_env(f'{str(node.var)} = {val_fun}')
 
         val, sub_expr = s_compile(node.in_expr, compiler, envs + sub_envs, depth + 1)
         return compiler.eval_let(str(envs), str(node.var), str(node.fun), str(node.in_expr), expr_fun,
@@ -79,13 +79,13 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
         parser = Parser()
         sub_envs, sub_rec, sub_var, sub_expr = parser.parse_func(val_1)
         if sub_rec is not None:
-            new_env = parser.parse_env(f'{sub_rec.name} = {val_1}, {sub_var} = {val_2}')
+            new_env = parser.parse_program_env(f'{sub_rec.name} = {val_1}, {sub_var} = {val_2}')
             val, expr = s_compile(sub_expr, compiler, sub_envs + new_env, depth + 1)
             return compiler.eval_app_rec(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val,
                                          depth)
         else:
             assert (isinstance(sub_var, Var))
-            new_env = parser.parse_env(f'{sub_var.name} = {val_2}')
+            new_env = parser.parse_program_env(f'{sub_var.name} = {val_2}')
             val, expr = s_compile(sub_expr, compiler, sub_envs + new_env, depth + 1)
             return compiler.eval_app(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2, expr, val, depth)
     elif isinstance(node, Fun):
@@ -94,7 +94,7 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
     elif isinstance(node, RecFun):
         parser = Parser()
         val = compiler.eval_rec(str(envs), node.var, node.fun.var, node.fun.expr)
-        new_envs = parser.parse_env(val)
+        new_envs = parser.parse_program_env(val)
         sub_val, sub_expr = s_compile(node.in_expr, compiler, envs + new_envs, depth + 1)
         env_and_fun, fun_expr = compiler.eval_let_rec(str(envs), node.var, node.fun.var, node.fun.expr, node.in_expr,
                                                       sub_expr, sub_val, depth)
@@ -123,7 +123,7 @@ def program(prog_input):
 
     parser = Parser()
 
-    env_list = parser.parse_env(env_expr)
+    env_list = parser.parse_program_env(env_expr)
 
     program_tree = parser.parse_program(prg)
 

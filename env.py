@@ -21,14 +21,15 @@ class EnvBool(EnvNode):
 
 
 class EnvNum(EnvNode):
-    def __init__(self, token: Token):
+    def __init__(self, token: Token, minus: bool):
         super().__init__([token])
-
-    def get_val(self):
-        return self.tokens[0]
+        self.minus = minus
 
     def __str__(self):
-        return f'{self.get_val().text}'
+        if self.minus:
+            return f'-{self.tokens[0].text}'
+        else:
+            return f'{self.tokens[0].text}'
 
 
 class EnvNil(EnvNode):
@@ -75,6 +76,40 @@ class EnvList(EnvNode):
         return f'{" ".join([str(token) for token in self.head])}::{" ".join([str(token) for token in self.tail])}'
 
 
+class EnvType(EnvNode):
+    def __init__(self, tokens: [Token]):
+        super().__init__(tokens)
+
+    def __str__(self):
+        return f'{" ".join([str(token) for token in self.tokens])}'
+
+
+class EnvTypeFun(EnvType):
+    def __init__(self, tokens: [Token], index: int):
+        super().__init__(tokens)
+        self.index = index
+
+    def get_left(self):
+        return EnvType(self.tokens[0:self.index])
+
+    def get_right(self):
+        return EnvType(self.tokens[self.index+1::])
+
+
+class EnvTypeList(EnvType):
+    def __init__(self, tokens: [Token], list_type: [Token]):
+        super().__init__(tokens)
+        self.list_type = list_type
+
+    def get_list_type(self):
+        return EnvType(self.list_type)
+
+
+class EnvTypeEmpty(EnvType):
+    def __init__(self):
+        super().__init__([])
+
+
 class Env:
     def __init__(self, kind: TokenType, var: Token, val: EnvNode):
         self.kind = kind
@@ -82,7 +117,36 @@ class Env:
         self.val = val
 
     def __str__(self):
+        pass
+
+    def check_var(self, var):
+        if self.var.text == var:
+            return True
+
+
+class ProgramEnv(Env):
+    def __init__(self, env: Env):
+        super().__init__(env.kind, env.var, env.val)
+
+    def __str__(self):
         return f'{str(self.var)} = {str(self.val)}'
+
+
+class TypeEnv(Env):
+    def __init__(self, env: Env):
+        super().__init__(env.kind, env.var, env.val)
+
+    def __str__(self):
+        return f'{str(self.var)} : {str(self.val)}'
+
+
+class TypeEnvPromise(TypeEnv):
+    def __init__(self, var: Token):
+        env = Env(var.kind, var, EnvTypeEmpty())
+        super().__init__(env)
+
+    def __str__(self):
+        return f'{str(self.var)} : PROMISED'
 
 
 class EnvCollection:
@@ -91,7 +155,7 @@ class EnvCollection:
 
     def append(self, env: Env):
         self.envs.append(env)
-        return self.envs
+        return self
 
     def __add__(self, other):
         if isinstance(other, EnvCollection):
@@ -117,6 +181,30 @@ class EnvCollection:
 
     def get_current_val(self) -> str:
         return str(self.envs[-1].val)
+
+    def get_val_by_var(self, var: str) -> str:
+        return str(self.get_env_by_var(var).val)
+
+    def get_env_by_var(self, var: str) -> Env:
+        for env in self.envs:
+            if env.check_var(var):
+                return env
+
+    def check_var(self, var: str):
+        for env in self.envs:
+            if env.check_var(var):
+                return True
+        return False
+
+    def set_var(self, var: str, new_env: Env):
+        for index, env in enumerate(self.envs):
+            if env.check_var(var):
+                self.envs[index] = new_env
+
+    def is_not_empty(self):
+        if len(self.envs) > 0:
+            return True
+        return False
 
     def __str__(self):
         return ", ".join([str(env) for env in self.envs])

@@ -1,4 +1,5 @@
-from EvalML.program import *
+from EvalML.program import program
+from TypingML.type_infer import infer
 import regex
 
 
@@ -18,7 +19,7 @@ def replace_evar(text):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    a = program('x = 2, y = 2 |- y < x evalto false')
+    a = infer('|- let k = fun x -> fun y -> x in k true (fun x -> x + 1) : bool')
     #print(a.replace('|-','').replace('True', 'true').replace('False', 'false'))
     #print(a.replace('True', 'true').replace('False', 'false'))
     print(replace_evar(a.replace('True', 'true').replace('False', 'false')))
