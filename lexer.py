@@ -46,6 +46,8 @@ class TokenType(enum.Enum):
     LIST = 503
     # Promised
     PROMISED = 601
+    QUOT = 602
+    PEORIOD = 603
 
 
 # Token contains the original text and the type of token.
@@ -151,6 +153,12 @@ class Lexer:
                 token = Token(last_char + self.cur_char, TokenType.DOUBLE_COLON)
             else:
                 token = Token(self.cur_char, TokenType.COLON)
+        elif self.cur_char == "'":
+            start_pos = self.cur_pos
+            while self.peek().isalnum():
+                self.next_char()
+                token_txt = self.source[start_pos: self.cur_pos + 1]  # Get the substring.
+                token = Token(token_txt, TokenType.QUOT)
         elif self.cur_char.isdigit():
             # Leading character is a digit, so this must be a number.
             # Get all consecutive digits.

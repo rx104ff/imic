@@ -171,7 +171,7 @@ class Compiler:
 
     @staticmethod
     def type_fun(environment, ident, expr, var_type, expr_type, expr_expr, depth: int):
-        inferred_type = f'{var_type} -> {expr_type}'
+        inferred_type = f'({var_type} -> {expr_type})'
         return Compiler.type_fun_2(environment, ident, expr, inferred_type, expr_expr, depth)
 
     @staticmethod
