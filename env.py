@@ -94,16 +94,10 @@ class TypeEnvBase(EnvVal):
 
 
 class TypeEnvFun(TypeEnvBase):
-    def __init__(self, tokens: [Token], index: int, is_paren: bool):
+    def __init__(self, tokens: [Token], left: TypeEnvBase, right: TypeEnvBase, is_paren: bool):
         super().__init__(tokens, is_paren)
-        self.index = index
-
-    def get_left(self):
-        return TypeEnvBase(self.tokens[0:self.index], False)
-
-    def get_right(self, parse):
-        _, val = parse(self.tokens[self.index + 1::], False)
-        return val
+        self.left = left
+        self.right = right
 
 
 class TypeEnvList(TypeEnvBase):
@@ -339,6 +333,22 @@ class EnvVariableDict(dict):
         super(EnvVariableDict, self).__init__(*args, **kwargs)
         self.alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.next_index = 0
+
+    def flatten(self):
+        def sub_flatten(s_dict, t: TypeEnvBase):
+            if isinstance(t, TypeEnvFun):
+                t.left = sub_flatten(s_dict, t.left)
+                t.right = sub_flatten(s_dict, t.right)
+                return t
+            elif isinstance(t, TypeEnvVariable):
+                if str(t) in s_dict.keys():
+                    if not isinstance(s_dict[t], TypeEnvVariable):
+                        return s_dict[t]
+            else:
+                return t
+
+        for key in self:
+            sub_flatten(self, self[key])
 
     def _get_next_key_value(self):
         if self.next_index >= len(self.alphabet):

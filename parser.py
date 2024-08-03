@@ -94,7 +94,9 @@ def parse_type_token(val: [Token], is_paren=False) -> (TokenType, TypeEnvBase):
                     stack -= 1
             elif token.kind == TokenType.ARROW:
                 if stack == 0:
-                    val = TypeEnvFun(val, index, is_paren)
+                    _, left = parse_type_token(val[0:index])
+                    _, right = parse_type_token(val[index+1::])
+                    val = TypeEnvFun(val, left, right, is_paren)
                     return TokenType.ARROW, val
 
         if val[-1].kind == TokenType.LIST:

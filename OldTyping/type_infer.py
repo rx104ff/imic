@@ -82,8 +82,8 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             return x,y
 
         if isinstance(inferred, TypeEnvFun):
-            left_type = inferred.get_left()
-            right_type = inferred.get_right()
+            left_type = inferred.left
+            right_type = inferred.right
             _, right_type = parse_type_token(right_type.tokens)
             new_env = parser.parse_type_env(f'{node.var} : {str(left_type)}')
             expr_type, expr_expr = s_infer(node.expr, right_type, compiler, envs + new_env, depth + 1)
