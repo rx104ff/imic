@@ -87,7 +87,7 @@ class TypeEnvBase(EnvVal):
         super().__init__(tokens, is_paren)
 
     def __rshift__(self, other):
-        tokens = self.tokens + other.tokens
+        tokens = self.tokens + [Token('->', TokenType.ARROW)] + other.tokens
         return TypeEnvFun(tokens, self, other, False)
 
     def __str__(self):

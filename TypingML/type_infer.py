@@ -68,7 +68,7 @@ def replace_env_var(expr: str, env_var: EnvVariableDict):
 
 
 def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: EnvCollection, env_var: EnvVariableDict, depth=1) -> (any, str):
-    #print(f'{envs} |- {node} : {str(inferred)}')
+    print(f'{envs} |- {node} : {str(inferred)}')
     if node is None:
         pass
 
@@ -108,7 +108,7 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         then_type, then_expr = s_infer(node.thenExpr, inferred, compiler, envs, env_var, depth + 1)
         else_type, else_expr = s_infer(node.elseExpr, inferred, compiler, envs, env_var, depth + 1)
         return compiler.type_if(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
-                                if_expr, then_expr, else_expr, str(inferred), depth)
+                                if_expr, then_expr, else_expr, str(then_type), depth)
     elif isinstance(node, Let):
         envs_str = str(envs)
         envs_copy = envs.full_copy()
@@ -172,9 +172,16 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         else:
             expr_type, expr_expr = s_infer(node.expr, inferred, compiler, envs, env_var, depth + 1)
 
+        if not isinstance(inferred, TypeEnvEmpty):
+            _, inf_1 = parse_type_token(Lexer(str(envs[node.var])).get_tokens())
+            _, inf_2 = parse_type_token(Lexer(expr_type).get_tokens())
+
+            ret = inf_1 >> inf_2
+            unify(ret, inferred, env_var)
         inferred_type, expr = compiler.type_fun(env_str, node.var, node.expr, envs[node.var],
                                                 expr_type, expr_expr, depth)
-
+        for key in env_var:
+            expr = expr.replace(str(key), f'{env_var[key]}')
         return inferred_type, expr
     elif isinstance(node, Num):
         return compiler.type_int(str(envs), str(node))
