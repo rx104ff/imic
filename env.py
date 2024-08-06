@@ -86,6 +86,10 @@ class TypeEnvBase(EnvVal):
     def __init__(self, tokens: [Token], is_paren: bool):
         super().__init__(tokens, is_paren)
 
+    def __rshift__(self, other):
+        tokens = self.tokens + other.tokens
+        return TypeEnvFun(tokens, self, other, False)
+
     def __str__(self):
         if self.is_paren:
             return f'({" ".join([str(token) for token in self.tokens])})'
@@ -233,16 +237,7 @@ class EnvCollection:
 class EnvCollection(dict):
     def __init__(self, *args, **kwargs):
         super(EnvCollection, self).__init__(*args, **kwargs)
-        self.alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         self.next_index = 0
-        self.sub_dict = {}
-
-    def _get_next_key_value(self):
-        if self.next_index >= len(self.alphabet):
-            raise ValueError("No more alphabetical keys available")
-        key_value = "'" + self.alphabet[self.next_index]
-        self.next_index += 1
-        return key_value
 
     def _get_str_key(self, key):
         """Helper method to get the string representation of the key."""
@@ -319,9 +314,6 @@ class EnvCollection(dict):
 
     def __setitem__(self, key, value):
         key = self._get_str_key(key)
-        if value is None:
-            value = self._get_next_key_value()
-            self.sub_dict[value] = value
         return super().__setitem__(key, value)
 
     def find_key_by_value(self, value):
@@ -331,7 +323,7 @@ class EnvCollection(dict):
 class EnvVariableDict(dict):
     def __init__(self, *args, **kwargs):
         super(EnvVariableDict, self).__init__(*args, **kwargs)
-        self.alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        self.alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         self.next_index = 0
 
     def flatten(self):

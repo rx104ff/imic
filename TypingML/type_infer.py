@@ -116,12 +116,9 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         parser = Parser()
         sub_envs = parser.parse_type_env(f'{node.var.name} : {fun_type}')
         envs_copy.append(sub_envs)
-        envs_copy.sub_dict = envs.sub_dict.copy()
         in_type, in_expr = s_infer(node.in_expr, inferred, compiler, envs_copy, env_var, depth + 1)
         ret_type, ret_expr = compiler.type_let(envs_str, str(node.var), str(node.fun), str(node.in_expr),
                                                fun_expr, in_expr, str(inferred), depth)
-        for key in envs.sub_dict:
-            ret_expr = ret_expr.replace(str(key), f'({envs.sub_dict[key]})')
 
         ret_expr = replace_env_var(ret_expr, env_var)
         return ret_type, ret_expr
@@ -132,10 +129,8 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             if type_1 in envs.values() and type_2 in env_var.keys():
                 key = env_var.add_entry()
                 _, new_parse = parse_type_token(Lexer(f'{type_2} -> {key}').get_tokens())
-                envs.sub_dict[type_1] = new_parse
                 ret_type, ret_expr = compiler.type_app(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2,
                                                        key, depth)
-                # ret_expr = ret_expr.replace(type_1, f'{str(new_parse)}')
                 return ret_type, ret_expr
         else:
             type_2_var = env_var.add_entry()
@@ -146,20 +141,17 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             type_1, sub_expr_1 = s_infer(node.var, type_1_var, compiler, envs, env_var, depth + 1)
             type_2, sub_expr_2 = s_infer(node.expr, type_2_var, compiler, envs, env_var, depth + 1)
 
-            for key in envs.sub_dict:
-                sub_expr_1 = sub_expr_1.replace(str(key), f'({envs.sub_dict[key]})')
-                sub_expr_2 = sub_expr_2.replace(str(key), f'({envs.sub_dict[key]})')
-                type_1 = type_1.replace(str(key), f'({envs.sub_dict[key]})')
-                type_2 = type_2.replace(str(key), f'({envs.sub_dict[key]})')
-
             for key in env_var:
                 sub_expr_1 = sub_expr_1.replace(str(key), f'{env_var[key]}')
                 sub_expr_2 = sub_expr_2.replace(str(key), f'{env_var[key]}')
                 type_1 = type_1.replace(str(key), f'{env_var[key]}')
                 type_2 = type_2.replace(str(key), f'{env_var[key]}')
 
-            _, inf_2 = parse_type_token(Lexer(f'{type_2} -> {str(inferred)}').get_tokens())
             _, inf_1 = parse_type_token(Lexer(type_1).get_tokens())
+            _, inf_2 = parse_type_token(Lexer(type_2).get_tokens())
+            if isinstance(inf_2, TypeEnvFun):
+                inf_2.is_paren = True
+            inf_2 = inf_2 >> inferred
 
             if isinstance(inferred, TypeEnvFun):
                 inferred.is_paren = True
@@ -171,11 +163,9 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             return ret_type, ret_expr
     elif isinstance(node, Fun):
         env_str = str(envs)
-        if isinstance(node.expr, Fun):
-            envs[node.var] = None
-        else:
-            key = env_var.add_entry()
-            envs[node.var] = key
+        key = env_var.add_entry()
+        envs[node.var] = key
+
         if isinstance(inferred, TypeEnvFun):
             right_type = inferred.right
             expr_type, expr_expr = s_infer(node.expr, right_type, compiler, envs, env_var, depth + 1)
@@ -184,9 +174,7 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
         inferred_type, expr = compiler.type_fun(env_str, node.var, node.expr, envs[node.var],
                                                 expr_type, expr_expr, depth)
-        for key in env_var:
-            pass
-            #expr = expr.replace(key, str(env_var[key]))
+
         return inferred_type, expr
     elif isinstance(node, Num):
         return compiler.type_int(str(envs), str(node))
@@ -199,9 +187,8 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             env = envs[node.name]
             return compiler.type_var(str(envs), str(node), str(env))
         else:
-            if envs[node.name] in envs.sub_dict.keys():
-                envs.sub_dict[envs[node.name]] = inferred
             env = envs[node.name]
+            # parse the str env to Env object
             if isinstance(env, str):
                 _, env = parse_type_token(Lexer(env).get_tokens(), False)
             unify(env, inferred, env_var)
