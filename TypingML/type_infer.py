@@ -5,39 +5,6 @@ from stree import *
 import re
 
 
-def remove_all_outer_parentheses(s: str) -> str:
-    if not s or s[0] != '(' or s[-1] != ')':
-        return s
-
-    stack = []
-    open_count = 0  # Count of open parentheses
-    result = []
-    to_remove = True
-
-    for i, char in enumerate(s):
-        if char == '(':
-            if open_count > 0:
-                result.append(char)
-            stack.append(char)
-            open_count += 1
-        elif char == ')':
-            open_count -= 1
-            stack.pop()
-            if open_count > 0:
-                result.append(char)
-        else:
-            result.append(char)
-
-        # If there's any character outside the outermost parentheses
-        if open_count == 0 and i < len(s) - 1:
-            to_remove = False
-
-    if to_remove and not stack:
-        return ''.join(result)
-    else:
-        return s
-
-
 def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariableDict):
     if isinstance(inferred_1, TypeEnvFun) and isinstance(inferred_2, TypeEnvFun):
         unify(inferred_1.left, inferred_2.left, env_var)
@@ -128,6 +95,7 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         ret_expr = replace_env_var(ret_expr, env_var)
         return ret_type, ret_expr
     elif isinstance(node, VarApp):
+        env_str = str(envs)
         if isinstance(inferred, TypeEnvEmpty):
             type_1, sub_expr_1 = s_infer(node.var, inferred, compiler, envs, env_var, depth + 1)
             type_2, sub_expr_2 = s_infer(node.expr, inferred, compiler, envs, env_var, depth + 1)
@@ -141,6 +109,9 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
                 return ret_type, ret_expr
         else:
             type_2_var = env_var.add_entry()
+            if isinstance(inferred, TypeEnvFun):
+                inferred.is_paren = True
+
             type_1_var = f'{type_2_var} -> {str(inferred)}'
 
             _, type_1_var = parse_type_token(Lexer(type_1_var).get_tokens())
@@ -161,10 +132,8 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
                 inf_2.is_paren = True
             inf_2 = inf_2 >> inferred
 
-            if isinstance(inferred, TypeEnvFun):
-                inferred.is_paren = True
             unify(inf_1, inf_2, env_var)
-            ret_type, ret_expr = compiler.type_app(str(envs), str(node.var), str(node.expr), sub_expr_1, sub_expr_2,
+            ret_type, ret_expr = compiler.type_app(env_str, str(node.var), str(node.expr), sub_expr_1, sub_expr_2,
                                                    str(inferred), depth)
             ret_expr = replace_env_var(ret_expr, env_var)
             ret_type = replace_env_var(ret_type, env_var)
@@ -180,14 +149,16 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         else:
             expr_type, expr_expr = s_infer(node.expr, inferred, compiler, envs, env_var, depth + 1)
 
-        if not isinstance(inferred, TypeEnvEmpty):
-            _, inf_1 = parse_type_token(Lexer(str(envs[node.var])).get_tokens())
-            _, inf_2 = parse_type_token(Lexer(expr_type).get_tokens())
+        _, inf_1 = parse_type_token(Lexer(str(envs[node.var])).get_tokens())
+        _, inf_2 = parse_type_token(Lexer(expr_type).get_tokens())
+        if isinstance(inf_2, TypeEnvFun):
+            inf_2.is_paren = True
 
+        if not isinstance(inferred, TypeEnvEmpty):
             ret = inf_1 >> inf_2
             unify(ret, inferred, env_var)
-        inferred_type, expr = compiler.type_fun(env_str, node.var, node.expr, envs[node.var],
-                                                expr_type, expr_expr, depth)
+        inferred_type, expr = compiler.type_fun(env_str, node.var, node.expr, str(inf_1),
+                                                str(inf_2), expr_expr, depth)
         for key in env_var:
             expr = expr.replace(str(key), f'{env_var[key]}')
         return inferred_type, expr
@@ -243,10 +214,11 @@ def infer(prog_input):
 
     env_var = EnvVariableDict()
     _, s = s_infer(program_tree, inferred, Compiler(), env_list, env_var)
-    #dot = program_tree.visualize_tree()
-    #dot.render('tree', format='png', view=True)
+
+    # This is to replace those cannot be inferred to int
     for key in env_var:
         if isinstance(env_var[key], TypeEnvVariable):
+            pass
             s = s.replace(str(key), "int")
     return s
 

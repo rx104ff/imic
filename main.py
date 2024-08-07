@@ -19,10 +19,11 @@ def replace_evar(text):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    a = infer('|- let s = fun f -> fun g -> fun x -> f x (g x) in let k1 = fun x -> fun y -> x in let k2 = fun x -> fun y -> x in s k1 k2: (int -> int)')
+    a = infer('|- let s = fun f -> fun g -> fun x -> f x (g x) in let k1 = fun x -> fun y -> x in let k2 = fun x -> fun y -> x in s k1 k2 (fun x -> x + 1) : int -> int')
     #b = program('x = true, y = 4 |- if y then x + 1 else x - 1 evalto 5 by')
     #print(a.replace('|-','').replace('True', 'true').replace('False', 'false'))
     #print(b.replace('True', 'true').replace('False', 'false'))
     print(replace_evar(a.replace('True', 'true').replace('False', 'false')))
     #test= "' l = ( ( ) ( apply = ( ) [ rec apply = fun l -> fun x -> match l with [] -> x | f :: l -> f ( apply l x ) ] ) [ fun y -> y + 3 ] ) :: [] )'"
     #stack = 0
+

@@ -108,6 +108,12 @@ class TypeEnvFun(TypeEnvBase):
         self.left = left
         self.right = right
 
+    def __str__(self):
+        if self.is_paren:
+            return f'({self.left} -> {self.right})'
+        else:
+            return f'{self.left} -> {self.right}'
+
 
 class TypeEnvList(TypeEnvBase):
     def __init__(self, tokens: [Token], list_type: [Token], is_paren: bool):
