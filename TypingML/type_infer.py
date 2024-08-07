@@ -58,17 +58,22 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
 
 
 def replace_env_var(expr: str, env_var: EnvVariableDict):
-    for key in env_var:
-        if isinstance(env_var[key], TypeEnvFun):
-            s = f'{env_var[key]}'
-        else:
-            s = str(env_var[key])
-        expr = expr.replace(str(key), s)
-    return expr
+    while True:
+        old = expr
+        for key in env_var:
+            if isinstance(env_var[key], TypeEnvFun):
+                s = f'{env_var[key]}'
+            else:
+                s = str(env_var[key])
+            old = old.replace(str(key), s)
+        if old == expr:
+            return expr
+        expr = old
 
 
 def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: EnvCollection, env_var: EnvVariableDict, depth=1) -> (any, str):
     #print(f'{envs} |- {node} : {str(inferred)}')
+    env_var.flatten_self()
     if node is None:
         pass
 
@@ -237,8 +242,11 @@ def infer(prog_input):
     program_tree = parser.parse_program(prg)
 
     env_var = EnvVariableDict()
-    s = s_infer(program_tree, inferred, Compiler(), env_list, env_var)
+    _, s = s_infer(program_tree, inferred, Compiler(), env_list, env_var)
     #dot = program_tree.visualize_tree()
     #dot.render('tree', format='png', view=True)
-    return s[1]
+    for key in env_var:
+        if isinstance(env_var[key], TypeEnvVariable):
+            s = s.replace(str(key), "int")
+    return s
 

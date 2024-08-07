@@ -97,6 +97,11 @@ class TypeEnvBase(EnvVal):
             return f'{" ".join([str(token) for token in self.tokens])}'
 
 
+class TypeEnvVariable(TypeEnvBase):
+    def __init__(self, tokens: [Token]):
+        super().__init__(tokens, False)
+
+
 class TypeEnvFun(TypeEnvBase):
     def __init__(self, tokens: [Token], left: TypeEnvBase, right: TypeEnvBase, is_paren: bool):
         super().__init__(tokens, is_paren)
@@ -116,11 +121,6 @@ class TypeEnvList(TypeEnvBase):
 class TypeEnvEmpty(TypeEnvBase):
     def __init__(self):
         super().__init__([], False)
-
-
-class TypeEnvVariable(TypeEnvBase):
-    def __init__(self, tokens: [Token]):
-        super().__init__(tokens, False)
 
 
 class Env:
@@ -347,7 +347,7 @@ class EnvVariableDict(dict):
             raise ValueError("No more alphabetical keys available")
         key_value = "'" + self.alphabet[self.next_index]
         self.next_index += 1
-        return key_value, key_value
+        return key_value
 
     def _get_str_key(self, key):
         """Helper method to get the string representation of the key."""
@@ -357,14 +357,52 @@ class EnvVariableDict(dict):
         return key
 
     def add_entry(self) -> str:
-        key, value = self._get_next_key_value()
+        key = self._get_next_key_value()
+        value = TypeEnvVariable([Token(key, TokenType.QUOT)])
         self[key] = value
+        self.flatten_self()
         return key
 
     def __setitem__(self, key, value):
         key = self._get_str_key(key)
-        return super().__setitem__(key, value)
+        ret = super().__setitem__(key, value)
+        self.flatten_self()
+        return ret
 
     def __getitem__(self, key):
         key = self._get_str_key(key)
         return super().__getitem__(key)
+
+    # We might need to prove that there would be no circular dependencies
+    def flatten_env_fun(self, env):
+        if env is None:
+            return None
+        value = self[env]
+        if isinstance(value, TypeEnvVariable):
+            if str(value) in self and str(value) != str(env):
+                self[env] = self[value]
+        elif isinstance(env, TypeEnvFun):
+            self.flatten_env_fun(value.left)
+            self.flatten_env_fun(value.right)
+
+    def flatten_self(self):
+        def resolve_type_env(node, dictionary):
+            if isinstance(node, TypeEnvVariable):
+                while str(node) in dictionary and str(node) != str(dictionary[node]):
+                    node = resolve_type_env(dictionary[node], dictionary)
+                return node
+            elif isinstance(node, TypeEnvFun):
+                left = resolve_type_env(node.left, dictionary)
+                right = resolve_type_env(node.right, dictionary)
+                ret = left >> right
+                ret.is_paren = node.is_paren
+                return ret
+            return node
+
+        flat_dict = {}
+
+        for key in self:
+            flat_dict[key] = resolve_type_env(self[key], self)
+
+        self.clear()
+        super().update(flat_dict)
