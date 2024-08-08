@@ -19,7 +19,7 @@ def replace_evar(text):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    a = infer('|- let rec fact = fun n -> if n < 2 then 1 else n * fact (n - 1) in fact 3 : int')
+    a = infer('|- let l = (fun x -> x) :: (fun y -> 2) :: (fun z -> z + 3) :: [] in 2 : int')
     #b = program('x = true, y = 4 |- if y then x + 1 else x - 1 evalto 5 by')
     #print(a.replace('|-','').replace('True', 'true').replace('False', 'false'))
     #print(b.replace('True', 'true').replace('False', 'false'))
