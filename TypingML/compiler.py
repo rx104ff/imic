@@ -194,14 +194,15 @@ class Compiler:
         return inferred_type, evalto
 
     @staticmethod
-    def eval_let_rec(environment: str,
+    def type_let_rec(environment: str,
                      ident_1: str, ident_2: str,
                      expr_1: str, expr_2: str,
-                     sub_expr: str,
-                     val: str,
+                     sub_expr_1: str, sub_expr_2: str,
+                     inferred_type: str,
                      depth: int):
         evalto = (
-            f'{environment}|- let rec {ident_1} = fun {ident_2} -> {expr_1} in {expr_2} : {val} by T-LetRec {{\n'
-            f'{Compiler.base_indent * depth}{sub_expr}'
+            f'{environment}|- let rec {ident_1} = fun {ident_2} -> {expr_1} in {expr_2} : {inferred_type} by T-LetRec {{\n'
+            f'{Compiler.base_indent * depth}{sub_expr_1}'
+            f'{Compiler.base_indent * depth}{sub_expr_2}'
             f'{Compiler.base_indent * (depth - 1)}}};\n')
-        return val, evalto
+        return inferred_type, evalto

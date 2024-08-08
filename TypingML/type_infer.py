@@ -82,10 +82,10 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         return compiler.type_if(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
                                 if_expr, then_expr, else_expr, str(then_type), depth)
     elif isinstance(node, Let):
+        parser = Parser()
         envs_str = str(envs)
         envs_copy = envs.full_copy()
         fun_type, fun_expr = s_infer(node.fun, TypeEnvEmpty(), compiler, envs, env_var, depth + 1)
-        parser = Parser()
         fun_type = replace_env_var(fun_type, env_var)
         sub_envs = parser.parse_type_env(f'{node.var.name} : {fun_type}')
         envs_copy.append(sub_envs)
@@ -93,6 +93,46 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         ret_type, ret_expr = compiler.type_let(envs_str, str(node.var), str(node.fun), str(node.in_expr),
                                                fun_expr, in_expr, str(inferred), depth)
         ret_expr = replace_env_var(ret_expr, env_var)
+        return ret_type, ret_expr
+    elif isinstance(node, RecFun):
+        parser = Parser()
+        envs_str = str(envs)
+        envs_copy_1 = envs.full_copy()
+        envs_copy_2 = envs.full_copy()
+
+        # Create type variables
+        alpha_1 = env_var.add_entry()
+        alpha_2 = env_var.add_entry()
+
+        # Create environments for sub expression inferrence
+        sub_envs_1 = parser.parse_type_env(f'{node.var.name} : {alpha_1}')
+        sub_envs_2 = parser.parse_type_env(f'{node.fun.var.name} : {alpha_2}')
+        envs_copy_1.append(sub_envs_1).append(sub_envs_2)
+        envs_copy_2.append(sub_envs_1)
+
+        type_expr_1, expr_1 = s_infer(node.fun.expr, TypeEnvEmpty(), compiler, envs_copy_1 , env_var, depth + 1)
+        expr_1 = replace_env_var(expr_1, env_var)
+        type_expr_1 = replace_env_var(type_expr_1, env_var)
+
+        type_expr_2, expr_2 = s_infer(node.in_expr, inferred, compiler, envs_copy_2, env_var, depth + 1)
+        expr_2 = replace_env_var(expr_2, env_var)
+        type_expr_2 = replace_env_var(type_expr_2, env_var)
+
+        # Parse into type env class
+        _, inf_1 = parse_type_token(Lexer(type_expr_1).get_tokens())
+        _, inf_2 = parse_type_token(Lexer(type_expr_2).get_tokens())
+
+        if isinstance(inf_1, TypeEnvFun):
+            inf_1.is_paren = True
+
+        # Unify inferences
+        unify(env_var[alpha_1], env_var[alpha_2] >> inf_1, env_var)
+        unify(inf_2, inferred, env_var)
+
+        ret_type, ret_expr = compiler.type_let_rec(envs_str, str(node.var), str(node.fun.var), str(node.fun.expr), str(node.in_expr),
+                                                   expr_1, expr_2, str(inferred), depth)
+        ret_expr = replace_env_var(ret_expr, env_var)
+        ret_type = replace_env_var(ret_type, env_var)
         return ret_type, ret_expr
     elif isinstance(node, VarApp):
         env_str = str(envs)
