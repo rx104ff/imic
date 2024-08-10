@@ -1,6 +1,6 @@
 from TypingML.compiler import Compiler
 from env import *
-from parser import Parser, parse_type_token, parse_promised
+from parser import Parser, parse_type_token
 from stree import *
 import re
 
@@ -9,15 +9,14 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
     if isinstance(inferred_1, TypeEnvFun) and isinstance(inferred_2, TypeEnvFun):
         unify(inferred_1.left, inferred_2.left, env_var)
         unify(inferred_1.right, inferred_2.right, env_var)
-        return
     elif isinstance(inferred_1, TypeEnvList) and isinstance(inferred_2, TypeEnvList):
-        return
+        unify(inferred_1.list_type, inferred_2.list_type, env_var)
     elif isinstance(inferred_1, TypeEnvVariable):
-        if isinstance(inferred_2, TypeEnvFun):
+        if isinstance(inferred_2, TypeEnvFun) or isinstance(inferred_2, TypeEnvList):
             inferred_2.is_paren = True
         env_var[inferred_1] = inferred_2
     elif isinstance(inferred_2, TypeEnvVariable):
-        if isinstance(inferred_1, TypeEnvFun):
+        if isinstance(inferred_1, TypeEnvFun) or isinstance(inferred_1, TypeEnvList):
             inferred_1.is_paren = True
         env_var[inferred_2] = inferred_1
     else:
@@ -60,6 +59,12 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         elif node.op == TokenType.LT:
             return compiler.type_lt(str(envs), str(node.left), str(node.right), left_expr, right_expr,
                                     depth)
+    elif isinstance(node, IfThenElse):
+        if_type, if_expr = s_infer(node.ifExpr, TypeEnvBase([Token('bool', TokenType.BOOL)], False), compiler, envs, env_var, depth + 1)
+        then_type, then_expr = s_infer(node.thenExpr, inferred, compiler, envs, env_var, depth + 1)
+        else_type, else_expr = s_infer(node.elseExpr, inferred, compiler, envs, env_var, depth + 1)
+        return compiler.type_if(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
+                                if_expr, then_expr, else_expr, str(then_type), depth)
     elif isinstance(node, ListNode):
         envs_str = str(envs)
         envs_copy_1 = envs.full_copy()
@@ -68,22 +73,28 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         _, expr_tail = s_infer(node.tail_expr, new_inferred, compiler, envs_copy_1, env_var, depth + 1)
         return compiler.type_cons(envs_str, str(node), str(expr_head), str(expr_tail), str(new_inferred), depth)
     elif isinstance(node, Match):
-        match_type, match_expr = s_infer(node.match_expr, TypeEnvEmpty(), compiler, envs, env_var, depth + 1)
-        _, nil_expr = s_infer(node.nil_expr, inferred, compiler, envs, env_var, depth + 1)
-
         parser = Parser()
-        assert (isinstance(node.cons_expr.var_expr, ListNode))
-        sub_envs = parser.parse_type_env(f'{node.cons_expr.var_expr.head_expr} : {match_type},'
-                                         f'{node.cons_expr.var_expr.tail_expr} : {match_type} list')
 
-        _, cons_expr = s_infer(node.cons_expr, inferred, compiler, envs + sub_envs, env_var, depth + 1)
-        return compiler.type_match(str(envs), str(node), match_expr, nil_expr, cons_expr, str(inferred), depth)
-    elif isinstance(node, IfThenElse):
-        if_type, if_expr = s_infer(node.ifExpr, TypeEnvBase([Token('bool', TokenType.BOOL)], False), compiler, envs, env_var, depth + 1)
-        then_type, then_expr = s_infer(node.thenExpr, inferred, compiler, envs, env_var, depth + 1)
-        else_type, else_expr = s_infer(node.elseExpr, inferred, compiler, envs, env_var, depth + 1)
-        return compiler.type_if(str(envs), str(node.ifExpr), str(node.thenExpr), str(node.elseExpr),
-                                if_expr, then_expr, else_expr, str(then_type), depth)
+        match_type, match_expr = s_infer(node.match_expr, TypeEnvEmpty(), compiler, envs, env_var, depth + 1)
+        nil_type, nil_expr = s_infer(node.nil_expr.evalto_expr, inferred, compiler, envs, env_var, depth + 1)
+
+        alpha = env_var.add_entry()
+
+        assert (isinstance(node.cons_expr.var_expr, ListNode))
+        sub_envs = parser.parse_type_env(f'{node.cons_expr.var_expr.head_expr} : {alpha},'
+                                         f'{node.cons_expr.var_expr.tail_expr} : {alpha} list')
+
+        cons_type, cons_expr = s_infer(node.cons_expr.evalto_expr, inferred, compiler, envs + sub_envs, env_var, depth + 1)
+
+        _, unifiee_1 = parse_type_token(Lexer(match_type).get_tokens())
+        _, unifiee_2 = parse_type_token(Lexer(f'{alpha} list').get_tokens())
+        _, unifiee_3 = parse_type_token(Lexer(nil_type).get_tokens())
+        _, unifiee_4 = parse_type_token(Lexer(cons_type).get_tokens())
+
+        unify(unifiee_1, unifiee_2, env_var)
+        unify(unifiee_3, unifiee_4, env_var)
+        ret_type, ret_expr = compiler.type_match(str(envs), str(node), match_expr, nil_expr, cons_expr, str(nil_type), depth)
+        return ret_type, ret_expr
     elif isinstance(node, Let):
         parser = Parser()
         envs_str = str(envs)
@@ -107,15 +118,18 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         alpha_1 = env_var.add_entry()
         alpha_2 = env_var.add_entry()
 
-        # Create environments for sub expression inferrence
+        # Create environments for sub expression inference
         sub_envs_1 = parser.parse_type_env(f'{node.var.name} : {alpha_1}')
         sub_envs_2 = parser.parse_type_env(f'{node.fun.var.name} : {alpha_2}')
         envs_copy_1.append(sub_envs_1).append(sub_envs_2)
-        envs_copy_2.append(sub_envs_1)
 
-        type_expr_1, expr_1 = s_infer(node.fun.expr, TypeEnvEmpty(), compiler, envs_copy_1 , env_var, depth + 1)
+        type_expr_1, expr_1 = s_infer(node.fun.expr, TypeEnvEmpty(), compiler, envs_copy_1, env_var, depth + 1)
         expr_1 = replace_env_var(expr_1, env_var)
         type_expr_1 = replace_env_var(type_expr_1, env_var)
+        new_sub_envs_1 = str(envs_copy_1[node.var.name])
+        new_sub_envs_1 = replace_env_var(new_sub_envs_1, env_var)
+        new_sub_envs_1 = parser.parse_type_env(f'{node.var.name} : {new_sub_envs_1}')
+        envs_copy_2.append(new_sub_envs_1)
 
         type_expr_2, expr_2 = s_infer(node.in_expr, inferred, compiler, envs_copy_2, env_var, depth + 1)
         expr_2 = replace_env_var(expr_2, env_var)
@@ -216,6 +230,9 @@ def s_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
     elif isinstance(node, Bool):
         return compiler.type_bool(str(envs), str(node))
     elif isinstance(node, Nil):
+        if isinstance(inferred, TypeEnvEmpty):
+            alpha = env_var.add_entry()
+            return compiler.type_nil(str(envs), str(node), str(alpha))
         return compiler.type_nil(str(envs), str(node), str(inferred))
     elif isinstance(node, Var):
         if isinstance(inferred, TypeEnvEmpty):
@@ -267,7 +284,6 @@ def infer(prog_input):
     # This is to replace those cannot be inferred to int
     for key in env_var:
         if isinstance(env_var[key], TypeEnvVariable):
-            pass
             s = s.replace(str(key), "int")
     return s
 

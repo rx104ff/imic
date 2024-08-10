@@ -116,12 +116,9 @@ class TypeEnvFun(TypeEnvBase):
 
 
 class TypeEnvList(TypeEnvBase):
-    def __init__(self, tokens: [Token], list_type: [Token], is_paren: bool):
+    def __init__(self, tokens: [Token], list_type: TypeEnvBase, is_paren: bool):
         super().__init__(tokens, is_paren)
         self.list_type = list_type
-
-    def get_list_type(self):
-        return TypeEnvBase(self.list_type, False)
 
 
 class TypeEnvEmpty(TypeEnvBase):
@@ -403,6 +400,12 @@ class EnvVariableDict(dict):
                 ret = left >> right
                 ret.is_paren = node.is_paren
                 return ret
+            elif isinstance(node, TypeEnvList):
+                list_type = resolve_type_env(node.list_type, dictionary)
+                if isinstance(list_type, TypeEnvFun) or isinstance(list_type, TypeEnvList):
+                    list_type.is_paren = True
+                node.list_type = list_type
+                return node
             return node
 
         flat_dict = {}

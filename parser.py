@@ -100,7 +100,10 @@ def parse_type_token(val: [Token], is_paren=False) -> (TokenType, TypeEnvBase):
                     return TokenType.ARROW, val
 
         if val[-1].kind == TokenType.LIST:
-            val = TypeEnvList(val, val[0:len(val) - 1], is_paren)
+            _, list_type = parse_type_token(val[0:len(val) - 1])
+            if isinstance(list_type, TypeEnvList) or isinstance(list_type, TypeEnvFun):
+                list_type.is_paren = True
+            val = TypeEnvList(val, list_type, is_paren)
             return TokenType.LIST, val
 
     # Remove outer parenthesis
