@@ -20,7 +20,7 @@ def replace_evar(text):
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     #a = infer('|- let rec append = fun l1 -> fun l2 -> match l1 with [] -> l2 | x :: y -> x :: append y l2 in append : int list -> int list -> int list')
-    b = program('x = 4, y = true |- if y then x + 1 else x - 1 evalto 5 by')
+    b = program('|- let rec sum = fun f -> fun n -> if n < 1 then 0 else f n + sum f (n - 1) in  sum (fun x -> x * x) 2 evalto 5')
     #print(a.replace('|-','').replace('True', 'true').replace('False', 'false'))
     print(b.replace('True', 'true').replace('False', 'false'))
     #print(replace_evar(a.replace('True', 'true').replace('False', 'false')))

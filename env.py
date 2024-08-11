@@ -310,7 +310,14 @@ class EnvCollection(dict):
         return [str(v) for v in value_list]
 
     def __str__(self):
-        return ", ".join([f'{key} : {self[key]}' for key in self])
+        envs = []
+        for key in self:
+            env = self[key]
+            if isinstance(env, TypeEnvBase):
+                envs.append(f'{key} : {self[key]}')
+            else:
+                envs.append(f'{key} = {self[key]}')
+        return ", ".join(envs)
 
     def __getitem__(self, key):
         key = self._get_str_key(key)
