@@ -59,6 +59,15 @@ class Token:
     def __str__(self):
         return f'{self.text}'
 
+    def __eq__(self, other):
+        if isinstance(other, Token):
+            return self.text == other.text and self.kind == other.kind
+        return False
+
+    def __hash__(self):
+        # Combine the hash values of x and y
+        return hash(self.text)
+
     @staticmethod
     def check_if_keyword(token_txt: str) -> Optional[TokenType]:
         for kind in TokenType:

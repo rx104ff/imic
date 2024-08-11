@@ -105,10 +105,13 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
     elif isinstance(node, Nil):
         return compiler.eval_nil(str(envs), str(node))
     elif isinstance(node, Var):
-        if node.name == envs.get_current().var.text:
-            return compiler.eval_var1(str(envs), str(node), envs.get_current_val())
+        key = envs.get_current()
+        if node.name == key:
+            return compiler.eval_var1(str(envs), str(node), str(envs.get_current_val()))
         else:
-            val, sub_expr = s_compile(node, compiler, envs.copy().pop(), depth + 1)
+            envs_copy = envs.full_copy()
+            envs_copy.pop(key)
+            val, sub_expr = s_compile(node, compiler, envs_copy, depth + 1)
             return compiler.eval_var2(str(envs), str(node), sub_expr, val, depth)
     elif isinstance(node, Bool):
         return compiler.eval_bool(str(envs), str(node))

@@ -251,7 +251,8 @@ class EnvCollection(dict):
 
     def append(self, env):
         if isinstance(env, Env):
-            self[self._get_str_key(env.var)] = env.val
+            key = env.var
+            self[key] = env.val
         elif isinstance(env, EnvCollection):
             for key, value in env.items():
                 self[self._get_str_key(key)] = value
@@ -280,11 +281,11 @@ class EnvCollection(dict):
         return self
 
     def get_current(self):
-        return list(self.values())[-1] if self else None
+        return list(self.keys())[-1] if self else None
 
     def get_current_val(self):
         current = self.get_current()
-        return str(current.val) if current else None
+        return self[current] if current else None
 
     def get_val_by_var(self, var):
         env = self.get_env_by_var(var)
