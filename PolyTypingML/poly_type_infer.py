@@ -14,17 +14,36 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
     elif isinstance(inferred_1, TypeEnvVariable):
         if isinstance(inferred_2, TypeEnvFun) or isinstance(inferred_2, TypeEnvList):
             inferred_2.is_paren = True
-        env_var[inferred_1] = inferred_2
+        if inferred_1 in env_free_var:
+            env_free_var[inferred_1] = inferred_2
+        elif inferred_1 in env_var:
+            env_var[inferred_1] = inferred_2
     elif isinstance(inferred_2, TypeEnvVariable):
         if isinstance(inferred_1, TypeEnvFun) or isinstance(inferred_1, TypeEnvList):
             inferred_1.is_paren = True
-        env_var[inferred_2] = inferred_1
+        if inferred_2 in env_free_var:
+            env_free_var[inferred_2] = inferred_1
+        elif inferred_2 in env_var:
+            env_var[inferred_2] = inferred_1
     else:
         pass
 
 
-def closure(inputs):
-    pass
+def closure(env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
+    def sub_closure(s_dict, t: TypeEnvBase):
+        if isinstance(t, TypeEnvFun):
+            t.left = sub_closure(s_dict, t.left)
+            t.right = sub_closure(s_dict, t.right)
+            return t
+        elif isinstance(t, TypeEnvVariable):
+            if str(t) in s_dict.keys():
+                if not isinstance(s_dict[t], TypeEnvVariable):
+                    return s_dict[t]
+        else:
+            return t
+
+    for key in env_var:
+        sub_closure(env_free_var, env_var[key])
 
 
 def replace_env_var(expr: str, env_var: EnvVariableDict):
@@ -251,6 +270,7 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
                 pass
                 env = env.expr
             unify(env, inferred, env_var, env_free_var)
+            closure(env_var, env_free_var)
             return compiler.type_var(str(envs), str(node), str(env))
     elif isinstance(node, Bool):
         return compiler.type_bool(str(envs), str(node))

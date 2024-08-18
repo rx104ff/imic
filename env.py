@@ -322,7 +322,7 @@ class EnvCollection(dict):
         envs = []
         for key in self:
             env = self[key]
-            if isinstance(env, TypeEnvBase):
+            if isinstance(env, TypeEnvBase) or isinstance(env, str):
                 envs.append(f'{key} : {self[key]}')
             else:
                 envs.append(f'{key} = {self[key]}')
@@ -392,6 +392,12 @@ class EnvVariableDict(dict):
     def __getitem__(self, key):
         key = self._get_str_key(key)
         return super().__getitem__(key)
+
+    def __contains__(self, item):
+        for k in self.keys():
+            if str(k) == str(item):
+                return True
+        return False
 
     # We might need to prove that there would be no circular dependencies
     def flatten_env_fun(self, env):
