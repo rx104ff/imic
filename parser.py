@@ -69,45 +69,54 @@ def parse_program_env_token(tokens: [Token], is_paren=False) -> Optional[EvalEnv
     return parse_program_env_token(tokens[0:2] + val[1:-1], True)
 
 
-def parse_type_token(val: [Token], is_paren=False) -> (TokenType, TypeEnvBase):
-    if len(val) == 1:
-        if val[0].kind == TokenType.BOOL:
-            val = TypeEnvBase(val, is_paren)
-            return TokenType.BOOL, val
-        elif val[0].kind == TokenType.INT:
-            val = TypeEnvBase(val, is_paren)
-            return TokenType.INT, val
-        elif val[0].kind == TokenType.QUOT:
-            val = TypeEnvVariable(val)
-            return TokenType.QUOT, val
+def parse_type_token(tokens: [Token], is_paren=False) -> (TokenType, TypeEnvBase):
+    if len(tokens) == 1:
+        if tokens[0].kind == TokenType.BOOL:
+            tokens = TypeEnvBase(tokens, is_paren)
+            return TokenType.BOOL, tokens
+        elif tokens[0].kind == TokenType.INT:
+            tokens = TypeEnvBase(tokens, is_paren)
+            return TokenType.INT, tokens
+        elif tokens[0].kind == TokenType.QUOT:
+            tokens = TypeEnvVariable(tokens)
+            return TokenType.QUOT, tokens
         else:
-            sys.exit("Error: Unknown env " + str(val[0]))
+            sys.exit("Error: Unknown env " + str(tokens[0]))
     else:
         stack = 0
-        for index, token in enumerate(val):
+        for index, token in enumerate(tokens):
             if token.kind == TokenType.OPEN_PAREN:
                 stack +=1
             elif token.kind == TokenType.CLOSE_PAREN:
                 if stack == 0:
-                    sys.exit("Error: Unmatched parenthesis " + val[0])
+                    sys.exit("Error: Unmatched parenthesis " + tokens[0])
                 else:
                     stack -= 1
+            elif token.kind == TokenType.PEORIOD:
+                if stack == 0:
+                    free_vars = []
+                    for var_token in tokens[0:index]:
+                        _, var = parse_type_token([var_token])
+                        free_vars.append(var)
+                    _, expr = parse_type_token(tokens[index + 1::])
+                    val = TypeEnvFree(tokens, free_vars, expr)
+                    return TokenType.PEORIOD, val
             elif token.kind == TokenType.ARROW:
                 if stack == 0:
-                    _, left = parse_type_token(val[0:index])
-                    _, right = parse_type_token(val[index+1::])
-                    val = TypeEnvFun(val, left, right, is_paren)
+                    _, left = parse_type_token(tokens[0:index])
+                    _, right = parse_type_token(tokens[index + 1::])
+                    val = TypeEnvFun(tokens, left, right, is_paren)
                     return TokenType.ARROW, val
 
-        if val[-1].kind == TokenType.LIST:
-            _, list_type = parse_type_token(val[0:len(val) - 1])
+        if tokens[-1].kind == TokenType.LIST:
+            _, list_type = parse_type_token(tokens[0:len(tokens) - 1])
             if isinstance(list_type, TypeEnvList) or isinstance(list_type, TypeEnvFun):
                 list_type.is_paren = True
-            val = TypeEnvList(val, list_type, is_paren)
-            return TokenType.LIST, val
+            tokens = TypeEnvList(tokens, list_type, is_paren)
+            return TokenType.LIST, tokens
 
     # Remove outer parenthesis
-    return parse_type_token(val[1:-1], True)
+    return parse_type_token(tokens[1:-1], True)
 
 
 def parse_type_env_token(tokens: [Token]) -> Optional[TypeEnv]:

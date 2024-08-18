@@ -162,6 +162,8 @@ class Lexer:
                 token = Token(last_char + self.cur_char, TokenType.DOUBLE_COLON)
             else:
                 token = Token(self.cur_char, TokenType.COLON)
+        elif self.cur_char == '.':
+            token = Token(self.cur_char, TokenType.PEORIOD)
         elif self.cur_char == "'":
             start_pos = self.cur_pos
             while self.peek().isalnum():

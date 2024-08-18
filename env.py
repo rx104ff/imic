@@ -121,6 +121,13 @@ class TypeEnvList(TypeEnvBase):
         self.list_type = list_type
 
 
+class TypeEnvFree(TypeEnvBase):
+    def __init__(self, tokens: [Token], free_vars: [TypeEnvVariable], expr: TypeEnvBase):
+        super().__init__(tokens, False)
+        self.free_vars = free_vars
+        self.expr = expr
+
+
 class TypeEnvEmpty(TypeEnvBase):
     def __init__(self):
         super().__init__([], False)
@@ -306,8 +313,10 @@ class EnvCollection(dict):
         return bool(self)
 
     def values(self):
+        #value_list = super(EnvCollection, self).values()
+        #return [str(v) for v in value_list]
         value_list = super(EnvCollection, self).values()
-        return [str(v) for v in value_list]
+        return value_list
 
     def __str__(self):
         envs = []
@@ -423,3 +432,30 @@ class EnvVariableDict(dict):
 
         self.clear()
         super().update(flat_dict)
+
+
+class FreeEnvVariableDict(EnvVariableDict):
+    @staticmethod
+    def remove_alphabets(a: str, b: str) -> str:
+        a_set = set(a)
+        result = ''.join([char for char in b if char not in a_set])
+
+        return result
+
+    def __init__(self, *args, **kwargs):
+        super(EnvVariableDict, self).__init__(*args, **kwargs)
+        self.alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        self.next_index = 0
+
+    def __setitem__(self, key, value):
+        key = self._get_str_key(key)
+        ret = super().__setitem__(key, value)
+        self.alphabet = self.remove_alphabets(str(key), self.alphabet)
+        self.flatten_self()
+        return ret
+
+    def add_entry_with_key(self, key) -> str:
+        key = self._get_str_key(key)
+        self.__setitem__(key, key)
+        self.flatten_self()
+        return key
