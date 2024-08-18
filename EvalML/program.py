@@ -6,7 +6,8 @@ from stree import *
 
 def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, str):
     #print(f'{envs} |- {node}')
-    envs = envs.copy()
+    envs = envs.full_copy()
+
     if node is None:
         pass
 
@@ -44,10 +45,10 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
         match_token = parser.parse_program_env(f'DUMMYVAR = {match_val}').get_current()
 
         # Nil type
-        if isinstance(match_token.val, EnvNil):
+        if isinstance(match_token.val, EvalEnvNil):
             val_nil, expr_nil = s_compile(node.nil_expr.evalto_expr, compiler, envs, depth + 1)
             return compiler.eval_match_nil(str(envs), str(node), match_expr, expr_nil, val_nil, depth)
-        elif isinstance(match_token.val, EnvList):
+        elif isinstance(match_token.val, EvalEnvList):
             assert(isinstance(node.cons_expr.var_expr, ListNode))
             new_envs = parser.parse_program_env(f'{node.cons_expr.var_expr.head_expr} = {match_token.val.get_head()}, '
                                         f'{node.cons_expr.var_expr.tail_expr} = {match_token.val.get_tail()}')
@@ -104,10 +105,13 @@ def s_compile(node, compiler: Compiler, envs: EnvCollection, depth=1) -> (any, s
     elif isinstance(node, Nil):
         return compiler.eval_nil(str(envs), str(node))
     elif isinstance(node, Var):
-        if node.name == envs.get_current().var.text:
-            return compiler.eval_var1(str(envs), str(node), envs.get_current_val())
+        key = envs.get_current()
+        if node.name == key:
+            return compiler.eval_var1(str(envs), str(node), str(envs.get_current_val()))
         else:
-            val, sub_expr = s_compile(node, compiler, envs.copy().pop(), depth + 1)
+            envs_copy = envs.full_copy()
+            envs_copy.pop(key)
+            val, sub_expr = s_compile(node, compiler, envs_copy, depth + 1)
             return compiler.eval_var2(str(envs), str(node), sub_expr, val, depth)
     elif isinstance(node, Bool):
         return compiler.eval_bool(str(envs), str(node))

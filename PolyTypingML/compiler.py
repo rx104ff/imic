@@ -176,7 +176,7 @@ class Compiler:
 
     @staticmethod
     def type_fun_2(environment, ident, expr, inferred_type, expr_expr, depth: int):
-        evalto = (f'{environment}|- fun {ident} -> {expr} : {inferred_type} by T-Fun{{\n'
+        evalto = (f'{environment}|- fun {ident} -> {expr} : {inferred_type} by T-Abs{{\n'
                   f'{Compiler.base_indent * depth}{expr_expr}'
                   f'{Compiler.base_indent * (depth - 1)}}}; \n')
         return inferred_type, evalto

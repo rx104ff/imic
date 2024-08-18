@@ -171,7 +171,7 @@ class Compiler:
 
     @staticmethod
     def type_fun(environment, ident, expr, var_type, expr_type, expr_expr, depth: int):
-        inferred_type = f'{var_type} -> {expr_type}'
+        inferred_type = f'({var_type} -> {expr_type})'
         return Compiler.type_fun_2(environment, ident, expr, inferred_type, expr_expr, depth)
 
     @staticmethod
@@ -194,15 +194,14 @@ class Compiler:
         return inferred_type, evalto
 
     @staticmethod
-    def type_let_rec(environment: str,
+    def eval_let_rec(environment: str,
                      ident_1: str, ident_2: str,
                      expr_1: str, expr_2: str,
-                     sub_expr_1: str, sub_expr_2: str,
-                     inferred_type: str,
+                     sub_expr: str,
+                     val: str,
                      depth: int):
         evalto = (
-            f'{environment}|- let rec {ident_1} = fun {ident_2} -> {expr_1} in {expr_2} : {inferred_type} by T-LetRec {{\n'
-            f'{Compiler.base_indent * depth}{sub_expr_1}'
-            f'{Compiler.base_indent * depth}{sub_expr_2}'
+            f'{environment}|- let rec {ident_1} = fun {ident_2} -> {expr_1} in {expr_2} : {val} by T-LetRec {{\n'
+            f'{Compiler.base_indent * depth}{sub_expr}'
             f'{Compiler.base_indent * (depth - 1)}}};\n')
-        return inferred_type, evalto
+        return val, evalto
