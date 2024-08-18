@@ -250,7 +250,7 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             elif isinstance(env, TypeEnvFree):
                 pass
                 env = env.expr
-            unify(env, inferred, env_var)
+            unify(env, inferred, env_var, env_free_var)
             return compiler.type_var(str(envs), str(node), str(env))
     elif isinstance(node, Bool):
         return compiler.type_bool(str(envs), str(node))
