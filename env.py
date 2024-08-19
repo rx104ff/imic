@@ -465,3 +465,11 @@ class FreeEnvVariableDict(EnvVariableDict):
         self.__setitem__(key, key)
         self.flatten_self()
         return key
+
+    def full_copy(self):
+        new_env = FreeEnvVariableDict()
+        for key, value in self.items():
+            new_env[new_env._get_str_key(key)] = value
+            new_env.next_index = self.next_index
+            new_env.alphabet = self.alphabet
+        return new_env

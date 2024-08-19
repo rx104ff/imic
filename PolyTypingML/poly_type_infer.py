@@ -1,4 +1,4 @@
-from TypingML.compiler import Compiler
+from PolyTypingML.compiler import Compiler
 from env import *
 from parser import Parser, parse_type_token
 from stree import *
@@ -30,20 +30,65 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
 
 
 def closure(env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
-    def sub_closure(s_dict, t: TypeEnvBase):
-        if isinstance(t, TypeEnvFun):
-            t.left = sub_closure(s_dict, t.left)
-            t.right = sub_closure(s_dict, t.right)
-            return t
-        elif isinstance(t, TypeEnvVariable):
-            if str(t) in s_dict.keys():
-                if not isinstance(s_dict[t], TypeEnvVariable):
-                    return s_dict[t]
-        else:
-            return t
+    def resolve_type_env(node, dictionary):
+        if isinstance(node, TypeEnvVariable):
+            while str(node) in dictionary and str(node) != str(dictionary[node]):
+                node = resolve_type_env(dictionary[node], dictionary)
+            return node
+        elif isinstance(node, TypeEnvFun):
+            left = resolve_type_env(node.left, dictionary)
+            right = resolve_type_env(node.right, dictionary)
+            ret = left >> right
+            ret.is_paren = node.is_paren
+            return ret
+        elif isinstance(node, TypeEnvList):
+            list_type = resolve_type_env(node.list_type, dictionary)
+            if isinstance(list_type, TypeEnvFun) or isinstance(list_type, TypeEnvList):
+                list_type.is_paren = True
+            node.list_type = list_type
+            return node
+        return node
+
+    flat_dict = {}
 
     for key in env_var:
-        sub_closure(env_free_var, env_var[key])
+        flat_dict[key] = resolve_type_env(env_var[key], env_free_var)
+
+    env_var.clear()
+    env_var.update(flat_dict)
+
+
+def closure_2(envs: EnvCollection, env_free_var: FreeEnvVariableDict):
+    def resolve_type_env(node, dictionary):
+        if isinstance(node, TypeEnvVariable):
+            while str(node) in dictionary and str(node) != str(dictionary[node]):
+                node = resolve_type_env(dictionary[node], dictionary)
+            return node
+        elif isinstance(node, TypeEnvFun):
+            left = resolve_type_env(node.left, dictionary)
+            right = resolve_type_env(node.right, dictionary)
+            ret = left >> right
+            ret.is_paren = node.is_paren
+            return ret
+        elif isinstance(node, TypeEnvList):
+            list_type = resolve_type_env(node.list_type, dictionary)
+            if isinstance(list_type, TypeEnvFun) or isinstance(list_type, TypeEnvList):
+                list_type.is_paren = True
+            node.list_type = list_type
+            return node
+        return node
+
+    flat_dict = {}
+
+    for key in envs:
+        env = envs[key]
+        if isinstance(env, TypeEnvFree):
+            flat_dict[key] = envs[key]
+        else:
+            flat_dict[key] = resolve_type_env(envs[key], env_free_var)
+
+    envs.clear()
+    envs.update(flat_dict)
 
 
 def replace_env_var(expr: str, env_var: EnvVariableDict):
@@ -122,9 +167,12 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         parser = Parser()
         envs_str = str(envs)
         envs_copy = envs.full_copy()
+        envs_free_copy = env_free_var.full_copy()
         fun_type, fun_expr = p_infer(node.fun, TypeEnvEmpty(), compiler, envs, env_var, env_free_var, depth + 1)
         fun_type = replace_env_var(fun_type, env_var)
-        sub_envs = parser.parse_type_env(f'{node.var.name} : {fun_type}')
+
+        free = env_free_var.keys() - envs_free_copy.keys()
+        sub_envs = parser.parse_type_env(f'{node.var.name} : {" ".join(free)}. {fun_type}')
         envs_copy.append(sub_envs)
         in_type, in_expr = p_infer(node.in_expr, inferred, compiler, envs_copy, env_var, env_free_var, depth + 1)
         ret_type, ret_expr = compiler.type_let(envs_str, str(node.var), str(node.fun), str(node.in_expr),
@@ -221,18 +269,19 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             unify(inf_1, inf_2, env_var, env_free_var)
             ret_type, ret_expr = compiler.type_app(env_str, str(node.var), str(node.expr), expr_1, expr_2,
                                                    str(inferred), depth)
-            #ret_expr = replace_env_var(ret_expr, env_var)
-            #ret_type = replace_env_var(ret_type, env_var)
+            ret_expr = replace_env_var(ret_expr, env_var)
+            ret_type = replace_env_var(ret_type, env_var)
             return ret_type, ret_expr
     elif isinstance(node, Fun):
         env_str = str(envs)
-        alpha = env_var.add_entry()
+        alpha = env_free_var.add_entry()
         envs[node.var] = alpha
 
         if isinstance(inferred, TypeEnvFun):
             right_type = inferred.right
             expr_type, expr_expr = p_infer(node.expr, right_type, compiler, envs, env_var, env_free_var, depth + 1)
         else:
+
             expr_type, expr_expr = p_infer(node.expr, inferred, compiler, envs, env_var, env_free_var, depth + 1)
 
         _, inf_1 = parse_type_token(Lexer(str(envs[node.var])).get_tokens())
@@ -269,9 +318,13 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             elif isinstance(env, TypeEnvFree):
                 pass
                 env = env.expr
+            val = str(env)
             unify(env, inferred, env_var, env_free_var)
+            unify(inferred, env, env_var, env_free_var)
             closure(env_var, env_free_var)
-            return compiler.type_var(str(envs), str(node), str(env))
+            closure_2(envs, env_free_var)
+            val = replace_env_var(val, env_free_var)
+            return compiler.type_var(str(envs), str(node), val)
     elif isinstance(node, Bool):
         return compiler.type_bool(str(envs), str(node))
     return None
