@@ -275,13 +275,13 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
     elif isinstance(node, Fun):
         env_str = str(envs)
         alpha = env_free_var.add_entry()
-        envs[node.var] = alpha
+        _, alpha_type = parse_type_token(Lexer(alpha).get_tokens())
+        envs[node.var] = alpha_type
 
         if isinstance(inferred, TypeEnvFun):
             right_type = inferred.right
             expr_type, expr_expr = p_infer(node.expr, right_type, compiler, envs, env_var, env_free_var, depth + 1)
         else:
-
             expr_type, expr_expr = p_infer(node.expr, inferred, compiler, envs, env_var, env_free_var, depth + 1)
 
         _, inf_1 = parse_type_token(Lexer(str(envs[node.var])).get_tokens())
