@@ -4,7 +4,7 @@ The compiler support EvalML, TypingML and PolyTypingML.
 
 A sample usage would be **python main.py "PolyTypingML" "|- if 4 < 5 then 2 + 3 else 8 * 8 : int"**, whose output is 
 
----
+```
 |- if 4 < 5 then 2 + 3 else 8 * 8 : int by T-If {
     |- 4 < 5 : bool by T-Lt {
         |- 4 : int by T-Int{};
@@ -19,7 +19,7 @@ A sample usage would be **python main.py "PolyTypingML" "|- if 4 < 5 then 2 + 3 
         |- 8 : int by T-Int{};
     };
 };
----
+```
 
 printed in the console
 
