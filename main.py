@@ -1,7 +1,8 @@
 from EvalML.program import program
-#from TypingML.type_infer import infer
-from PolyTypingML.poly_type_infer import infer
+from TypingML.type_infer import infer as s_infer
+from PolyTypingML.poly_type_infer import infer as p_infer
 import regex
+import sys
 
 
 def replace_evar(text):
@@ -20,11 +21,22 @@ def replace_evar(text):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    a = infer("|- let compose = fun f -> fun g -> fun x -> f (g x) in let f = fun x -> if x then 3 else 4 in let g = fun x -> x < 4 in compose f (compose g f) true : int")
-    #b = program('|- let rec sum = fun f -> fun n -> if n < 1 then 0 else f n + sum f (n - 1) in  sum (fun x -> x * x) 2 evalto 5')
-    #print(a.replace('|-','').replace('True', 'true').replace('False', 'false'))
-    #print(b.replace('True', 'true').replace('False', 'false'))
-    print(replace_evar(a.replace('True', 'true').replace('False', 'false')))
-    #test= "' l = ( ( ) ( apply = ( ) [ rec apply = fun l -> fun x -> match l with [] -> x | f :: l -> f ( apply l x ) ] ) [ fun y -> y + 3 ] ) :: [] )'"
-    #stack = 0
+    #print(sys.argv)
+    ml_type = sys.argv[1]
+    input_value = sys.argv[2]
 
+    if ml_type == "EvalML1":
+        val = program(f'|- {input_value}')
+        print(val.replace('|-','').replace('True', 'true').replace('False', 'false'))
+    elif ml_type == "EvalML2" or ml_type == "EvalML3":
+        val = program(f'{input_value}')
+        print(val.replace('True', 'true').replace('False', 'false'))
+    elif ml_type == "EvalML4":
+        val = program(f'{input_value}')
+        print(replace_evar(val.replace('True', 'true').replace('False', 'false')))
+    elif ml_type == "TypingML":
+        val = s_infer(f'{input_value}')
+        print(replace_evar(val.replace('True', 'true').replace('False', 'false')))
+    elif ml_type == "PolyTypingML":
+        val = p_infer(f'{input_value}')
+        print(replace_evar(val.replace('True', 'true').replace('False', 'false')))
