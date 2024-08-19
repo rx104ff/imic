@@ -127,6 +127,13 @@ class TypeEnvFree(TypeEnvBase):
         self.free_vars = free_vars
         self.expr = expr
 
+    def __str__(self):
+        if len(self.free_vars) == 0:
+            return str(self.expr)
+        else:
+            free = ' '.join([str (env) for env in self.free_vars])
+            return f"{free}. {self.expr}"
+
 
 class TypeEnvEmpty(TypeEnvBase):
     def __init__(self):
@@ -458,6 +465,7 @@ class FreeEnvVariableDict(EnvVariableDict):
         ret = super().__setitem__(key, value)
         self.alphabet = self.remove_alphabets(str(key), self.alphabet)
         self.flatten_self()
+        self.next_index = 0
         return ret
 
     def add_entry_with_key(self, key) -> str:

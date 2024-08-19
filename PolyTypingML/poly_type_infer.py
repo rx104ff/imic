@@ -17,14 +17,16 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
         if inferred_1 in env_free_var:
             env_free_var[inferred_1] = inferred_2
         elif inferred_1 in env_var:
-            env_var[inferred_1] = inferred_2
+            if isinstance(env_var[inferred_1], TypeEnvVariable):
+                env_var[inferred_1] = inferred_2
     elif isinstance(inferred_2, TypeEnvVariable):
         if isinstance(inferred_1, TypeEnvFun) or isinstance(inferred_1, TypeEnvList):
             inferred_1.is_paren = True
         if inferred_2 in env_free_var:
             env_free_var[inferred_2] = inferred_1
         elif inferred_2 in env_var:
-            env_var[inferred_2] = inferred_1
+            if isinstance(env_var[inferred_2], TypeEnvVariable):
+                env_var[inferred_2] = inferred_1
     else:
         pass
 
@@ -178,6 +180,9 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         ret_type, ret_expr = compiler.type_let(envs_str, str(node.var), str(node.fun), str(node.in_expr),
                                                fun_expr, in_expr, str(inferred), depth)
         ret_expr = replace_env_var(ret_expr, env_var)
+
+        # Function to replace based on the dictionary
+
         return ret_type, ret_expr
     elif isinstance(node, RecFun):
         parser = Parser()
@@ -269,12 +274,13 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             unify(inf_1, inf_2, env_var, env_free_var)
             ret_type, ret_expr = compiler.type_app(env_str, str(node.var), str(node.expr), expr_1, expr_2,
                                                    str(inferred), depth)
+
             ret_expr = replace_env_var(ret_expr, env_var)
             ret_type = replace_env_var(ret_type, env_var)
             return ret_type, ret_expr
     elif isinstance(node, Fun):
         env_str = str(envs)
-        alpha = env_free_var.add_entry()
+        alpha = env_var.add_entry()
         _, alpha_type = parse_type_token(Lexer(alpha).get_tokens())
         envs[node.var] = alpha_type
 
@@ -294,6 +300,13 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             unify(ret, inferred, env_var, env_free_var)
         inferred_type, expr = compiler.type_fun(env_str, node.var, node.expr, str(inf_1),
                                                 str(inf_2), expr_expr, depth)
+
+        for var in env_var:
+            if isinstance(env_var[var], TypeEnvVariable) and str(env_var[var]) == str(var):
+                free_var = env_free_var.add_entry()
+                _, free_type = parse_type_token(Lexer(free_var).get_tokens())
+                env_var[var] = free_type
+
         for alpha in env_var:
             expr = expr.replace(str(alpha), f'{env_var[alpha]}')
         return inferred_type, expr
@@ -318,13 +331,19 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             elif isinstance(env, TypeEnvFree):
                 pass
                 env = env.expr
-            val = str(env)
+            val = str(inferred)
             unify(env, inferred, env_var, env_free_var)
             unify(inferred, env, env_var, env_free_var)
             closure(env_var, env_free_var)
             closure_2(envs, env_free_var)
-            val = replace_env_var(val, env_free_var)
-            return compiler.type_var(str(envs), str(node), val)
+            val = replace_env_var(val, env_var)
+            _, val_type = parse_type_token(Lexer(val).get_tokens(), False)
+            sub_env = envs[node.name]
+            if isinstance(sub_env, TypeEnvFree):
+                sub_env = sub_env.expr
+            unify(val_type, sub_env, env_var, env_free_var)
+
+            return compiler.type_var(str(envs), str(node), str(env))
     elif isinstance(node, Bool):
         return compiler.type_bool(str(envs), str(node))
     return None
@@ -368,6 +387,5 @@ def infer(prog_input):
                 env_free_var.add_entry_with_key(free_var)
 
     _, s = p_infer(program_tree, inferred, Compiler(), env_list, env_var, env_free_var)
-
     return s
 
