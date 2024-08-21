@@ -5,6 +5,20 @@ from stree import *
 import re
 
 
+def replace_env_var(expr: str, env_var: EnvVariableDict):
+    while True:
+        old = expr
+        for key in env_var:
+            if isinstance(env_var[key], TypeEnvFun):
+                s = f'{env_var[key]}'
+            else:
+                s = str(env_var[key])
+            old = old.replace(str(key), s)
+        if old == expr:
+            return expr
+        expr = old
+
+
 def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
     if isinstance(inferred_1, TypeEnvFun) and isinstance(inferred_2, TypeEnvFun):
         unify(inferred_1.left, inferred_2.left, env_var, env_free_var)
@@ -14,7 +28,7 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
     elif isinstance(inferred_1, TypeEnvVariable):
         if isinstance(inferred_2, TypeEnvFun) or isinstance(inferred_2, TypeEnvList):
             inferred_2.is_paren = True
-        if inferred_1 in env_free_var:
+        if inferred_1 in env_free_var and (not isinstance(inferred_2, TypeEnvVariable) or inferred_2 not in env_var):
             env_free_var[inferred_1] = inferred_2
         elif inferred_1 in env_var:
             if isinstance(env_var[inferred_1], TypeEnvVariable):
@@ -22,7 +36,7 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
     elif isinstance(inferred_2, TypeEnvVariable):
         if isinstance(inferred_1, TypeEnvFun) or isinstance(inferred_1, TypeEnvList):
             inferred_1.is_paren = True
-        if inferred_2 in env_free_var:
+        if inferred_2 in env_free_var and (not isinstance(inferred_1, TypeEnvVariable) or inferred_1 not in env_var):
             env_free_var[inferred_2] = inferred_1
         elif inferred_2 in env_var:
             if isinstance(env_var[inferred_2], TypeEnvVariable):
@@ -31,7 +45,19 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
         pass
 
 
-def closure(env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
+def master_unify(inferred: TypeEnvBase, env: TypeEnvBase, env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
+    old = str(inferred)
+    while True:
+        unify(inferred, env, env_var, env_free_var)
+        _, inferred = parse_type_token(Lexer(replace_env_var(replace_env_var(str(inferred), env_free_var), env_var)).get_tokens())
+        _, env = parse_type_token(Lexer(replace_env_var(replace_env_var(str(env), env_free_var), env_var)).get_tokens())
+        if str(inferred) == old:
+            break
+        old = str(inferred)
+    return inferred
+
+
+def flatten(env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
     def resolve_type_env(node, dictionary):
         if isinstance(node, TypeEnvVariable):
             while str(node) in dictionary and str(node) != str(dictionary[node]):
@@ -60,7 +86,7 @@ def closure(env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
     env_var.update(flat_dict)
 
 
-def closure_2(envs: EnvCollection, env_free_var: FreeEnvVariableDict):
+def flatten_2(envs: EnvCollection, env_free_var: FreeEnvVariableDict):
     def resolve_type_env(node, dictionary):
         if isinstance(node, TypeEnvVariable):
             while str(node) in dictionary and str(node) != str(dictionary[node]):
@@ -93,18 +119,22 @@ def closure_2(envs: EnvCollection, env_free_var: FreeEnvVariableDict):
     envs.update(flat_dict)
 
 
-def replace_env_var(expr: str, env_var: EnvVariableDict):
-    while True:
-        old = expr
-        for key in env_var:
-            if isinstance(env_var[key], TypeEnvFun):
-                s = f'{env_var[key]}'
-            else:
-                s = str(env_var[key])
-            old = old.replace(str(key), s)
-        if old == expr:
-            return expr
-        expr = old
+def replace_env_free_var(expr: str, env_free_var: FreeEnvVariableDict):
+    def replace_symbols(match):
+        content = match.group(1)  # Get all content inside the closure
+        for symbol, replacement in env_free_var.items():
+            if symbol in content:
+                # Replace the symbol with its corresponding value
+                content = content.replace(str(symbol), str(replacement))
+        return f"|- {content}\n"
+
+    # Regular expression to match everything between |- and \n
+    pattern = re.compile(r"\|-\s*(.*?)\s*\n", re.DOTALL)
+
+    # Apply the replacement using the function
+    expr = pattern.sub(replace_symbols, expr)
+
+    return expr
 
 
 def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: EnvCollection, env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict, depth=1) -> (any, str):
@@ -180,9 +210,6 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         ret_type, ret_expr = compiler.type_let(envs_str, str(node.var), str(node.fun), str(node.in_expr),
                                                fun_expr, in_expr, str(inferred), depth)
         ret_expr = replace_env_var(ret_expr, env_var)
-
-        # Function to replace based on the dictionary
-
         return ret_type, ret_expr
     elif isinstance(node, RecFun):
         parser = Parser()
@@ -244,6 +271,8 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             unify(unifiee_1, unifiee_2, env_var, env_free_var)
             ret_type, ret_expr = compiler.type_app(str(envs), str(node.var), str(node.expr), expr_1, expr_2,
                                                        alpha, depth)
+            flatten(env_var, env_free_var)
+            flatten_2(envs, env_free_var)
             return ret_type, ret_expr
         else:
             type_2_var = env_var.add_entry()
@@ -255,14 +284,25 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             _, type_1_var = parse_type_token(Lexer(type_1_var).get_tokens())
             _, type_2_var = parse_type_token(Lexer(type_2_var).get_tokens())
             envs_copy = envs.full_copy()
+            env_free_var_copy = env_free_var.full_copy()
             type_1, expr_1 = p_infer(node.var, type_1_var, compiler, envs, env_var, env_free_var, depth + 1)
-            type_2, expr_2 = p_infer(node.expr, type_2_var, compiler, envs_copy, env_var, env_free_var, depth + 1)
+            type_2, expr_2 = p_infer(node.expr, type_2_var, compiler, envs_copy, env_var, env_free_var_copy, depth + 1)
 
-            for alpha in env_var:
+            """for alpha in env_var:
                 expr_1 = expr_1.replace(str(alpha), f'{env_var[alpha]}')
                 expr_2 = expr_2.replace(str(alpha), f'{env_var[alpha]}')
                 type_1 = type_1.replace(str(alpha), f'{env_var[alpha]}')
-                type_2 = type_2.replace(str(alpha), f'{env_var[alpha]}')
+                type_2 = type_2.replace(str(alpha), f'{env_var[alpha]}')"""
+
+            expr_1 = replace_env_var(expr_1, env_var)
+            expr_2 = replace_env_var(expr_2, env_var)
+            type_1 = replace_env_var(type_1, env_var)
+            type_2 = replace_env_var(type_2, env_var)
+
+            expr_1 = replace_env_free_var(expr_1, env_free_var)
+            type_1 = replace_env_var(type_1, env_free_var)
+            expr_2 = replace_env_free_var(expr_2, env_free_var_copy)
+            type_2 = replace_env_var(type_2, env_free_var_copy)
 
             _, inf_1 = parse_type_token(Lexer(type_1).get_tokens())
             _, inf_2 = parse_type_token(Lexer(type_2).get_tokens())
@@ -274,9 +314,12 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             unify(inf_1, inf_2, env_var, env_free_var)
             ret_type, ret_expr = compiler.type_app(env_str, str(node.var), str(node.expr), expr_1, expr_2,
                                                    str(inferred), depth)
-
+            flatten(env_var, env_free_var)
+            flatten_2(envs, env_free_var)
             ret_expr = replace_env_var(ret_expr, env_var)
             ret_type = replace_env_var(ret_type, env_var)
+            #ret_expr = replace_env_free_var(ret_expr, env_free_var)
+            #ret_type = replace_env_free_var(ret_type, env_free_var)
             return ret_type, ret_expr
     elif isinstance(node, Fun):
         env_str = str(envs)
@@ -309,6 +352,8 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
         for alpha in env_var:
             expr = expr.replace(str(alpha), f'{env_var[alpha]}')
+        flatten(env_var, env_free_var)
+        flatten_2(envs, env_free_var)
         return inferred_type, expr
     elif isinstance(node, Num):
         return compiler.type_int(str(envs), str(node))
@@ -322,6 +367,8 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
     elif isinstance(node, Var):
         if isinstance(inferred, TypeEnvEmpty):
             env = envs[node.name]
+            flatten(env_var, env_free_var)
+            flatten_2(envs, env_free_var)
             return compiler.type_var(str(envs), str(node), str(env))
         else:
             env = envs[node.name]
@@ -329,21 +376,23 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             if isinstance(env, str):
                 _, env = parse_type_token(Lexer(env).get_tokens(), False)
             elif isinstance(env, TypeEnvFree):
-                pass
                 env = env.expr
-            val = str(inferred)
-            unify(env, inferred, env_var, env_free_var)
-            unify(inferred, env, env_var, env_free_var)
-            closure(env_var, env_free_var)
-            closure_2(envs, env_free_var)
-            val = replace_env_var(val, env_var)
-            _, val_type = parse_type_token(Lexer(val).get_tokens(), False)
-            sub_env = envs[node.name]
-            if isinstance(sub_env, TypeEnvFree):
-                sub_env = sub_env.expr
-            unify(val_type, sub_env, env_var, env_free_var)
 
-            return compiler.type_var(str(envs), str(node), str(env))
+            inferred = master_unify(inferred, env, env_var, env_free_var)
+            """            
+            sub_env = env
+            unify(inferred, sub_env, env_var, env_free_var)
+
+            ret = str(inferred)
+            ret = replace_env_var(ret, env_var)
+
+            _, ret_type = parse_type_token(Lexer(ret).get_tokens(), False)
+
+            unify(ret_type, sub_env, env_var, env_free_var)
+            ret = replace_env_var(ret, env_free_var)
+            """
+
+            return compiler.type_var(str(envs), str(node), str(inferred))
     elif isinstance(node, Bool):
         return compiler.type_bool(str(envs), str(node))
     return None
