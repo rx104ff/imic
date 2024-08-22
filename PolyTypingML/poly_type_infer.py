@@ -196,6 +196,9 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             head_type, expr_head = p_infer(node.head_expr, inferred.list_type, compiler, envs, env_var, env_free_var, depth + 1)
         else:
             head_type, expr_head = p_infer(node.head_expr, TypeEnvEmpty(), compiler, envs, env_var, env_free_var, depth + 1)
+        _, head_type = parse_type_token(Lexer(head_type).get_tokens())
+        if isinstance(head_type, TypeEnvFun) or isinstance(head_type, TypeEnvList):
+            head_type.is_paren = True
         _, new_inferred = parse_type_token(Lexer(f'{head_type} list').get_tokens())
         if not isinstance(inferred, TypeEnvEmpty):
             new_inferred = master_unify(inferred, new_inferred, env_var, env_free_var)
