@@ -20,6 +20,15 @@ def replace_env_var(expr: str, env_var: EnvVariableDict):
 
 
 def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariableDict, env_free_var: FreeEnvVariableDict):
+    def check_has_var(env: TypeEnvBase):
+        if isinstance(env, TypeEnvVariable):
+            return True
+        elif isinstance(env, TypeEnvFun):
+            return check_has_var(env.left) or check_has_var(env.right)
+        elif isinstance(env, TypeEnvList):
+            return check_has_var(env.list_type)
+        else:
+            return False
     if isinstance(inferred_1, TypeEnvFun) and isinstance(inferred_2, TypeEnvFun):
         unify(inferred_1.left, inferred_2.left, env_var, env_free_var)
         unify(inferred_1.right, inferred_2.right, env_var, env_free_var)
@@ -28,7 +37,7 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
     elif isinstance(inferred_1, TypeEnvVariable):
         if isinstance(inferred_2, TypeEnvFun) or isinstance(inferred_2, TypeEnvList):
             inferred_2.is_paren = True
-        if inferred_1 in env_free_var and (not isinstance(inferred_2, TypeEnvVariable) or inferred_2 not in env_var):
+        if inferred_1 in env_free_var and (not check_has_var(inferred_2)):
             env_free_var[inferred_1] = inferred_2
         elif inferred_1 in env_var:
             if isinstance(env_var[inferred_1], TypeEnvVariable):
@@ -36,7 +45,7 @@ def unify(inferred_1: TypeEnvBase, inferred_2: TypeEnvBase, env_var: EnvVariable
     elif isinstance(inferred_2, TypeEnvVariable):
         if isinstance(inferred_1, TypeEnvFun) or isinstance(inferred_1, TypeEnvList):
             inferred_1.is_paren = True
-        if inferred_2 in env_free_var and (not isinstance(inferred_1, TypeEnvVariable) or inferred_1 not in env_var):
+        if inferred_2 in env_free_var and (not check_has_var(inferred_1)):
             env_free_var[inferred_2] = inferred_1
         elif inferred_2 in env_var:
             if isinstance(env_var[inferred_2], TypeEnvVariable):
