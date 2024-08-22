@@ -80,13 +80,16 @@ def parse_type_token(tokens: [Token], is_paren=False) -> (TokenType, TypeEnvBase
         elif tokens[0].kind == TokenType.QUOT:
             tokens = TypeEnvVariable(tokens)
             return TokenType.QUOT, tokens
+        elif tokens[0].kind == TokenType.DOUBLE_BRACKET:
+            tokens = TypeEnvNil(tokens)
+            return TokenType.DOUBLE_BRACKET, tokens
         else:
             sys.exit("Error: Unknown env " + str(tokens[0]))
     else:
         stack = 0
         for index, token in enumerate(tokens):
             if token.kind == TokenType.OPEN_PAREN:
-                stack +=1
+                stack += 1
             elif token.kind == TokenType.CLOSE_PAREN:
                 if stack == 0:
                     sys.exit("Error: Unmatched parenthesis " + tokens[0])

@@ -192,8 +192,13 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
     elif isinstance(node, ListNode):
         envs_str = str(envs)
         envs_copy_1 = envs.full_copy()
-        head_type, expr_head = p_infer(node.head_expr, TypeEnvEmpty(), compiler, envs, env_var, env_free_var, depth + 1)
-        _, new_inferred = parse_type_token(Lexer(f'({head_type}) list').get_tokens())
+        if isinstance(inferred, TypeEnvList):
+            head_type, expr_head = p_infer(node.head_expr, inferred.list_type, compiler, envs, env_var, env_free_var, depth + 1)
+        else:
+            head_type, expr_head = p_infer(node.head_expr, TypeEnvEmpty(), compiler, envs, env_var, env_free_var, depth + 1)
+        _, new_inferred = parse_type_token(Lexer(f'{head_type} list').get_tokens())
+        if not isinstance(inferred, TypeEnvEmpty):
+            new_inferred = master_unify(inferred, new_inferred, env_var, env_free_var)
         _, expr_tail = p_infer(node.tail_expr, new_inferred, compiler, envs_copy_1, env_var, env_free_var, depth + 1)
         return compiler.type_cons(envs_str, str(node), str(expr_head), str(expr_tail), str(new_inferred), depth)
     elif isinstance(node, Match):
@@ -408,7 +413,7 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
     elif isinstance(node, Nil):
         if isinstance(inferred, TypeEnvEmpty):
             alpha = env_var.add_entry()
-            return compiler.type_nil(str(envs), str(node), str(alpha))
+            return compiler.type_nil(str(envs), str(node), f'{alpha} list')
         return compiler.type_nil(str(envs), str(node), str(inferred))
     elif isinstance(node, Var):
         if isinstance(inferred, TypeEnvEmpty):

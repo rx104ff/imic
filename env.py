@@ -102,6 +102,11 @@ class TypeEnvVariable(TypeEnvBase):
         super().__init__(tokens, False)
 
 
+class TypeEnvNil(TypeEnvBase):
+    def __init__(self, tokens: [Token]):
+        super().__init__(tokens, False)
+
+
 class TypeEnvFun(TypeEnvBase):
     def __init__(self, tokens: [Token], left: TypeEnvBase, right: TypeEnvBase, is_paren: bool):
         super().__init__(tokens, is_paren)
