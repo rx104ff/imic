@@ -274,6 +274,14 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         new_sub_envs_1 = parser.parse_type_env(f'{node.var.name} : {new_sub_envs_1}')
         envs_copy_2.append(new_sub_envs_1)
 
+        for var in env_var:
+            if isinstance(env_var[var], TypeEnvVariable) and str(env_var[var]) == str(var):
+                free_var = env_free_var.add_entry()
+                _, free_type = parse_type_token(Lexer(free_var).get_tokens())
+                env_var[var] = free_type
+
+        env_var.flatten_self()
+
         type_expr_2, expr_2 = p_infer(node.in_expr, inferred, compiler, envs_copy_2, env_var, env_free_var, depth + 1)
         expr_2 = replace_env_var(expr_2, env_var)
         type_expr_2 = replace_env_var(type_expr_2, env_var)
