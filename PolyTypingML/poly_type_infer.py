@@ -132,7 +132,7 @@ def replace_env_free_var(expr: str, env_free_var: FreeEnvVariableDict):
     def replace_symbols(match):
         content = match.group(1)  # Get all content inside the closure
         for symbol, replacement in env_free_var.items():
-            if symbol in content:
+            if str(symbol) in content:
                 # Replace the symbol with its corresponding value
                 content = content.replace(str(symbol), str(replacement))
         return f"|- {content}\n"
@@ -323,7 +323,12 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
                 inf_2.is_paren = True
             inf_2 = inf_2 >> inferred
 
-            unify(inf_1, inf_2, env_var, env_free_var)
+            master_unify(inf_1, inf_2, env_var, env_free_var)
+            master_unify(inf_1, inf_2, env_var, env_free_var_copy)
+
+            expr_1 = replace_env_free_var(expr_1, env_free_var)
+            expr_2 = replace_env_free_var(expr_2, env_free_var_copy)
+
             ret_type, ret_expr = compiler.type_app(env_str, str(node.var), str(node.expr), expr_1, expr_2,
                                                    str(inferred), depth)
             flatten(env_var, env_free_var)

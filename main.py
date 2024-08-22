@@ -21,7 +21,7 @@ def replace_evar(text):
 
 if __name__ == '__main__':
     ml_type = "PolyTypingML"
-    input_value = "|- let twice = fun f -> fun x -> f (f x) in twice twice (fun x -> x + 4) 5 : int"
+    input_value = "f: 'a.'a->'a |- f (fun x -> x + 3) : int -> int"
 
     if ml_type == "EvalML1":
         val = program(f'|- {input_value}')
