@@ -257,10 +257,11 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
     elif isinstance(node, VarApp):
         env_str = str(envs)
         if isinstance(inferred, TypeEnvEmpty):
+            env_free_var_copy = env_free_var.full_copy()
             # Infer the left
             type_1, expr_1 = p_infer(node.var, inferred, compiler, envs, env_var, env_free_var, depth + 1)
             # Infer the right
-            type_2, expr_2 = p_infer(node.expr, inferred, compiler, envs, env_var, env_free_var, depth + 1)
+            type_2, expr_2 = p_infer(node.expr, inferred, compiler, envs, env_var, env_free_var_copy, depth + 1)
 
             # if type_2 in env_var.keys():
             alpha = env_var.add_entry()
@@ -268,9 +269,17 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             # Unify inferred types
             _, unifiee_1 = parse_type_token(Lexer(type_1).get_tokens())
             _, unifiee_2 = parse_type_token(Lexer(f'{type_2} -> {alpha}').get_tokens())
-            unify(unifiee_1, unifiee_2, env_var, env_free_var)
+            ret = master_unify(unifiee_1, unifiee_2, env_var, env_free_var)
+            #unify(unifiee_1, unifiee_2, env_var, env_free_var)
+
+            expr_1 = replace_env_var(expr_1, env_var)
+            expr_2 = replace_env_var(expr_2, env_var)
+
+            expr_1 = replace_env_free_var(expr_1, env_free_var)
+            expr_2 = replace_env_free_var(expr_2, env_free_var_copy)
+
             ret_type, ret_expr = compiler.type_app(str(envs), str(node.var), str(node.expr), expr_1, expr_2,
-                                                       alpha, depth)
+                                                   alpha, depth)
             flatten(env_var, env_free_var)
             flatten_2(envs, env_free_var)
             return ret_type, ret_expr
@@ -287,12 +296,6 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             env_free_var_copy = env_free_var.full_copy()
             type_1, expr_1 = p_infer(node.var, type_1_var, compiler, envs, env_var, env_free_var, depth + 1)
             type_2, expr_2 = p_infer(node.expr, type_2_var, compiler, envs_copy, env_var, env_free_var_copy, depth + 1)
-
-            """for alpha in env_var:
-                expr_1 = expr_1.replace(str(alpha), f'{env_var[alpha]}')
-                expr_2 = expr_2.replace(str(alpha), f'{env_var[alpha]}')
-                type_1 = type_1.replace(str(alpha), f'{env_var[alpha]}')
-                type_2 = type_2.replace(str(alpha), f'{env_var[alpha]}')"""
 
             expr_1 = replace_env_var(expr_1, env_var)
             expr_2 = replace_env_var(expr_2, env_var)
@@ -318,8 +321,6 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
             flatten_2(envs, env_free_var)
             ret_expr = replace_env_var(ret_expr, env_var)
             ret_type = replace_env_var(ret_type, env_var)
-            #ret_expr = replace_env_free_var(ret_expr, env_free_var)
-            #ret_type = replace_env_free_var(ret_type, env_free_var)
             return ret_type, ret_expr
     elif isinstance(node, Fun):
         env_str = str(envs)
@@ -379,18 +380,6 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
                 env = env.expr
 
             inferred = master_unify(inferred, env, env_var, env_free_var)
-            """            
-            sub_env = env
-            unify(inferred, sub_env, env_var, env_free_var)
-
-            ret = str(inferred)
-            ret = replace_env_var(ret, env_var)
-
-            _, ret_type = parse_type_token(Lexer(ret).get_tokens(), False)
-
-            unify(ret_type, sub_env, env_var, env_free_var)
-            ret = replace_env_var(ret, env_free_var)
-            """
 
             return compiler.type_var(str(envs), str(node), str(inferred))
     elif isinstance(node, Bool):
