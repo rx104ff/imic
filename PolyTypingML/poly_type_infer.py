@@ -350,15 +350,26 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
         if not isinstance(inferred, TypeEnvEmpty):
             ret = inf_1 >> inf_2
-            unify(ret, inferred, env_var, env_free_var)
-        inferred_type, expr = compiler.type_fun(env_str, node.var, node.expr, str(inf_1),
-                                                str(inf_2), expr_expr, depth)
+            master_unify(ret, inferred, env_var, env_free_var)
 
-        for var in env_var:
-            if isinstance(env_var[var], TypeEnvVariable) and str(env_var[var]) == str(var):
-                free_var = env_free_var.add_entry()
-                _, free_type = parse_type_token(Lexer(free_var).get_tokens())
-                env_var[var] = free_type
+        inf_1_str = str(inf_1)
+        inf_2_str = str(inf_2)
+
+        inf_1_str = replace_env_var(inf_1_str, env_var)
+        inf_1_str = replace_env_var(inf_1_str, env_free_var)
+
+        inf_2_str = replace_env_var(inf_2_str, env_var)
+        inf_2_str = replace_env_var(inf_2_str, env_free_var)
+
+        inferred_type, expr = compiler.type_fun(env_str, node.var, node.expr, str(inf_1_str),
+                                                str(inf_2_str), expr_expr, depth)
+
+        if isinstance(inferred, TypeEnvEmpty):
+            for var in env_var:
+                if isinstance(env_var[var], TypeEnvVariable) and str(env_var[var]) == str(var):
+                    free_var = env_free_var.add_entry()
+                    _, free_type = parse_type_token(Lexer(free_var).get_tokens())
+                    env_var[var] = free_type
 
         for alpha in env_var:
             expr = expr.replace(str(alpha), f'{env_var[alpha]}')
