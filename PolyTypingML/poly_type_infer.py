@@ -154,8 +154,9 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
     if isinstance(node, BinOp):
         # Infer base types, int for +|-|*, bool for if else then
+        env_free_var_copy = env_free_var.full_copy()
         _, left_expr = p_infer(node.left, TypeEnvBase([Token('int', TokenType.INT)], False), compiler, envs, env_var, env_free_var, depth + 1)
-        _, right_expr = p_infer(node.right, TypeEnvBase([Token('int', TokenType.INT)], False), compiler, envs, env_var, env_free_var, depth + 1)
+        _, right_expr = p_infer(node.right, TypeEnvBase([Token('int', TokenType.INT)], False), compiler, envs, env_var, env_free_var_copy, depth + 1)
         if node.op == TokenType.MINUS:
             return compiler.type_minus(str(envs), str(node.left), str(node.right), left_expr, right_expr,
                                        depth)

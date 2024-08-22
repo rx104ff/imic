@@ -20,8 +20,10 @@ def replace_evar(text):
 
 
 if __name__ == '__main__':
-    ml_type = "PolyTypingML"
-    input_value = "f: 'a.'a->'a |- f (fun x -> x + 3) : int -> int"
+    #ml_type = "PolyTypingML"
+    #input_value = "f: 'a 'b.'a->'b->'a |- f 3 true + f 2 4 : int "
+    ml_type = sys.argv[1]
+    input_value = sys.argv[2]
 
     if ml_type == "EvalML1":
         val = program(f'|- {input_value}')
