@@ -115,7 +115,7 @@ def parse_type_token(tokens: [Token], is_paren=False) -> (TokenType, TypeEnvBase
             _, list_type = parse_type_token(tokens[0:len(tokens) - 1])
             if isinstance(list_type, TypeEnvList) or isinstance(list_type, TypeEnvFun):
                 list_type.is_paren = True
-            tokens = TypeEnvList(tokens, list_type, is_paren)
+            tokens = TypeEnvList(list_type, is_paren)
             return TokenType.LIST, tokens
 
     # Remove outer parenthesis

@@ -256,6 +256,7 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         envs_str = str(envs)
         envs_copy_1 = envs.full_copy()
         envs_copy_2 = envs.full_copy()
+        envs_free_copy = env_free_var.full_copy()
 
         # Create type variables
         alpha_1 = env_var.add_entry()
@@ -267,12 +268,6 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
         envs_copy_1.append(sub_envs_1).append(sub_envs_2)
 
         type_expr_1, expr_1 = p_infer(node.fun.expr, TypeEnvEmpty(), compiler, envs_copy_1, env_var, env_free_var, depth + 1)
-        expr_1 = replace_env_var(expr_1, env_var)
-        type_expr_1 = replace_env_var(type_expr_1, env_var)
-        new_sub_envs_1 = str(envs_copy_1[node.var.name])
-        new_sub_envs_1 = replace_env_var(new_sub_envs_1, env_var)
-        new_sub_envs_1 = parser.parse_type_env(f'{node.var.name} : {new_sub_envs_1}')
-        envs_copy_2.append(new_sub_envs_1)
 
         for var in env_var:
             if isinstance(env_var[var], TypeEnvVariable) and str(env_var[var]) == str(var):
@@ -281,6 +276,17 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
                 env_var[var] = free_type
 
         env_var.flatten_self()
+
+        expr_1 = replace_env_var(expr_1, env_var)
+        type_expr_1 = replace_env_var(type_expr_1, env_var)
+        new_sub_envs_1 = str(envs_copy_1[node.var.name])
+        new_sub_envs_1 = replace_env_var(new_sub_envs_1, env_var)
+
+        free = env_free_var.keys() - envs_free_copy.keys()
+        new_sub_envs_1 = parser.parse_type_env(f'{node.var.name} : {" ".join(free)}. {new_sub_envs_1}')
+
+        #new_sub_envs_1 = parser.parse_type_env(f'{node.var.name} : {new_sub_envs_1}')
+        envs_copy_2.append(new_sub_envs_1)
 
         type_expr_2, expr_2 = p_infer(node.in_expr, inferred, compiler, envs_copy_2, env_var, env_free_var, depth + 1)
         expr_2 = replace_env_var(expr_2, env_var)
@@ -299,8 +305,8 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
         ret_type, ret_expr = compiler.type_let_rec(envs_str, str(node.var), str(node.fun.var), str(node.fun.expr), str(node.in_expr),
                                                    expr_1, expr_2, str(inferred), depth)
-        ret_expr = replace_env_var(ret_expr, env_var)
-        ret_type = replace_env_var(ret_type, env_var)
+        #ret_expr = replace_env_var(ret_expr, env_var)
+        #ret_type = replace_env_var(ret_type, env_var)
         return ret_type, ret_expr
     elif isinstance(node, VarApp):
         env_str = str(envs)
@@ -328,8 +334,8 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
             ret_type, ret_expr = compiler.type_app(str(envs), str(node.var), str(node.expr), expr_1, expr_2,
                                                    alpha, depth)
-            flatten(env_var, env_free_var)
-            flatten_2(envs, env_free_var)
+            #flatten(env_var, env_free_var)
+            #flatten_2(envs, env_free_var)
             return ret_type, ret_expr
         else:
             type_2_var = env_var.add_entry()
@@ -370,8 +376,8 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
             ret_type, ret_expr = compiler.type_app(env_str, str(node.var), str(node.expr), expr_1, expr_2,
                                                    str(inferred), depth)
-            flatten(env_var, env_free_var)
-            flatten_2(envs, env_free_var)
+            #flatten(env_var, env_free_var)
+            #flatten_2(envs, env_free_var)
             ret_expr = replace_env_var(ret_expr, env_var)
             ret_type = replace_env_var(ret_type, env_var)
             return ret_type, ret_expr
@@ -414,8 +420,8 @@ def p_infer(node: SyntaxNode, inferred: TypeEnvBase, compiler: Compiler, envs: E
 
         for alpha in env_var:
             expr = expr.replace(str(alpha), f'{env_var[alpha]}')
-        flatten(env_var, env_free_var)
-        flatten_2(envs, env_free_var)
+        #flatten(env_var, env_free_var)
+        #flatten_2(envs, env_free_var)
         return inferred_type, expr
     elif isinstance(node, Num):
         return compiler.type_int(str(envs), str(node))

@@ -20,10 +20,10 @@ def replace_evar(text):
 
 
 if __name__ == '__main__':
-    #ml_type = "PolyTypingML"
-    #input_value = "|- let l = (fun x -> x) :: [] in let l1 = (fun y -> y + 1) :: l in (fun z -> if z then false else true) :: l : (bool -> bool) list"
-    ml_type = sys.argv[1]
-    input_value = sys.argv[2]
+    ml_type = "PolyTypingML"
+    input_value = "|- let rec length = fun l -> match l with [] -> 0 | x :: y -> 1 + length y in length (3 :: 2 :: []) + length ((1 :: []) :: []) : int"
+    #ml_type = sys.argv[1]
+    #input_value = sys.argv[2]
 
     if ml_type == "EvalML1":
         val = program(f'|- {input_value}')
