@@ -401,6 +401,8 @@ class EnvVariableDict(dict):
 
     def __setitem__(self, key, value):
         key = self._get_str_key(key)
+        if isinstance(value, TypeEnvFun):
+            value.is_paren = True
         ret = super().__setitem__(key, value)
         self.flatten_self()
         return ret
@@ -426,6 +428,14 @@ class EnvVariableDict(dict):
         elif isinstance(env, TypeEnvFun):
             self.flatten_env_fun(value.left)
             self.flatten_env_fun(value.right)
+
+    def full_copy(self):
+        new_env = EnvVariableDict()
+        for key, value in self.items():
+            new_env[new_env._get_str_key(key)] = value
+            new_env.next_index = self.next_index
+            new_env.alphabet = self.alphabet
+        return new_env
 
     def flatten_self(self):
         def resolve_type_env(node, dictionary):
@@ -474,6 +484,8 @@ class FreeEnvVariableDict(EnvVariableDict):
 
     def __setitem__(self, key, value):
         key = self._get_str_key(key)
+        if isinstance(value, TypeEnvFun):
+            value.is_paren = True
         ret = super().__setitem__(key, value)
         self.alphabet = self.remove_alphabets(str(key), self.alphabet)
         self.flatten_self()
