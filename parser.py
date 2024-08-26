@@ -7,13 +7,15 @@ open_closures = {TokenType.OPEN_PAREN: TokenType.CLOSE_PAREN,
                  TokenType.LET: TokenType.IN,
                  TokenType.IF: TokenType.THEN,
                  TokenType.THEN: TokenType.ELSE,
-                 TokenType.MATCH: TokenType.WITH}
+                 TokenType.MATCH: TokenType.WITH,
+                 TokenType.WITH: TokenType.BAR}
 
 close_closures = {TokenType.CLOSE_PAREN: TokenType.OPEN_PAREN,
                   TokenType.IN: TokenType.LET,
                   TokenType.THEN: TokenType.IF,
                   TokenType.ELSE: TokenType.THEN,
-                  TokenType.WITH: TokenType.MATCH}
+                  TokenType.WITH: TokenType.MATCH,
+                  TokenType.BAR: TokenType.WITH}
 
 bop = [TokenType.LT, TokenType.MINUS, TokenType.PLUS, TokenType.ASTERISK, TokenType.ARROW, TokenType.EQ]
 
@@ -446,7 +448,7 @@ class Parser:
                     stack.pop()
             if token.kind in open_closures:
                 stack.append(token)
-            if token.kind == token_type:
+            if token.kind not in close_closures and token.kind == token_type:
                 if not stack:
                     return i + start_index
 

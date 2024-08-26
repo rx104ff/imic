@@ -97,7 +97,7 @@ class Compiler:
                    expr_1: str, expr_2: str,
                    sub_expr_1: str, sub_expr_2: str,
                    depth: int) -> (any, str):
-        evalto = (f'{environment}|- {expr_1} * {expr_2} : int by T-Times {{\n'
+        evalto = (f'{environment}|- {expr_1} * {expr_2} : int by T-Mult {{\n'
                   f'{Compiler.base_indent * depth}{sub_expr_1}'
                   f'{Compiler.base_indent * depth}{sub_expr_2}'
                   f'{Compiler.base_indent * (depth - 1)}}};\n')
